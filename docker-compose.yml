@@ -1,0 +1,12 @@
+services:
+  jukebox:
+    image: ghcr.io/${GITHUB_USERNAME}/jukebox-app:latest
+    container_name: jukebox
+    restart: unless-stopped
+    ports:
+      - "${JUKEBOX_PORT:-3080}:80"
+
+    # Optional: if you want to live-edit the app without rebuilding,
+    # mount the app folder directly. Comment out for production.
+    # volumes:
+    #   - ./app:/usr/share/nginx/html:ro
