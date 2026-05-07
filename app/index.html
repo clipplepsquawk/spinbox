@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Jukebox</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #0d0d0d;
+      --surface:   #181818;
+      --border:    #2a2a2a;
+      --accent:    #f5a623;
+      --accent2:   #e8445a;
+      --text:      #f0ede8;
+      --muted:     #888;
+      --radius:    12px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    /* ── Layout ── */
+    #app {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      height: 100vh;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* ── Header / Login ── */
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    #header h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 2px;
+      color: var(--accent);
+    }
+    #header .server-info { font-size: 0.75rem; color: var(--muted); }
+
+    /* ── Screens ── */
+    .screen { display: none; flex-direction: column; height: 100%; }
+    .screen.active { display: flex; }
+
+    /* ── Login Screen ── */
+    #login-screen {
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 24px;
+    }
+    #login-screen h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.4rem;
+      letter-spacing: 3px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .field {
+      width: 100%;
+      max-width: 360px;
+    }
+    .field label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 6px; letter-spacing: 1px; text-transform: uppercase; }
+    .field input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      padding: 14px 16px;
+      font-size: 1rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .field input:focus { border-color: var(--accent); }
+
+    .btn {
+      width: 100%;
+      max-width: 360px;
+      padding: 16px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: var(--radius);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.3rem;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active { opacity: 0.8; transform: scale(0.98); }
+    .btn.secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    #login-error { color: var(--accent2); font-size: 0.85rem; min-height: 1.2em; }
+
+    /* ── Main Screen ── */
+    #main-screen { overflow: hidden; }
+
+    /* tab bar */
+    #tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      padding: 0 12px;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .tab {
+      padding: 12px 20px;
+      font-size: 0.8rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: color .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .tab.active { color: var(--accent); border-color: var(--accent); }
+
+    /* content panes */
+    #content {
+      flex: 1;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      padding: 16px;
+    }
+    .pane { display: none; }
+    .pane.active { display: block; }
+
+    /* search bar */
+    #search-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    #search-bar input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      padding: 12px 16px;
+      font-size: 1rem;
+      font-family: inherit;
+      outline: none;
+    }
+    #search-bar input:focus { border-color: var(--accent); }
+    #search-bar button {
+      padding: 12px 20px;
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: var(--radius);
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1rem;
+      letter-spacing: 1px;
+      cursor: pointer;
+    }
+
+    /* grid of cards */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 14px;
+    }
+    @media (min-width: 600px) {
+      .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform .15s, border-color .15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .card:active { transform: scale(0.96); }
+    .card:hover { border-color: var(--accent); }
+
+    .card-art {
+      width: 100%;
+      aspect-ratio: 1;
+      background: #222;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      overflow: hidden;
+    }
+    .card-art img { width: 100%; height: 100%; object-fit: cover; }
+
+    .card-info { padding: 10px 12px 12px; }
+    .card-title { font-size: 0.85rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-sub { font-size: 0.75rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+    /* track list */
+    .track-list { display: flex; flex-direction: column; gap: 2px; }
+    .track-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .12s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .track-row:active, .track-row.playing { background: var(--surface); }
+    .track-row.playing .track-name { color: var(--accent); }
+    .track-num { width: 24px; text-align: center; font-size: 0.8rem; color: var(--muted); flex-shrink: 0; }
+    .track-name { flex: 1; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .track-duration { font-size: 0.8rem; color: var(--muted); flex-shrink: 0; }
+
+    /* ── Now Playing Bar ── */
+    #now-playing {
+      border-top: 1px solid var(--border);
+      background: #111;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex-shrink: 0;
+      min-height: 76px;
+    }
+    #np-art {
+      width: 48px; height: 48px;
+      border-radius: 8px;
+      background: #222;
+      overflow: hidden;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+    }
+    #np-art img { width: 100%; height: 100%; object-fit: cover; }
+    #np-info { flex: 1; min-width: 0; }
+    #np-title { font-size: 0.9rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #np-artist { font-size: 0.78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+
+    /* progress */
+    #np-progress-wrap {
+      position: absolute;
+      bottom: 76px;
+      left: 0; right: 0;
+      height: 3px;
+      background: var(--border);
+      cursor: pointer;
+    }
+    #np-progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width .5s linear; }
+
+    /* controls */
+    #np-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .ctrl-btn {
+      width: 44px; height: 44px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      cursor: pointer;
+      color: var(--text);
+      transition: background .12s, color .12s;
+      -webkit-tap-highlight-color: transparent;
+      font-size: 1.1rem;
+    }
+    .ctrl-btn:active { background: var(--border); }
+    .ctrl-btn.play-btn {
+      background: var(--accent);
+      color: #000;
+      width: 48px; height: 48px;
+      font-size: 1.2rem;
+    }
+    .ctrl-btn.play-btn:active { opacity: 0.8; }
+
+    #volume-wrap { display: flex; align-items: center; gap: 8px; }
+    #volume-wrap input[type=range] {
+      width: 70px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    /* loading / empty states */
+    .state-msg {
+      text-align: center;
+      color: var(--muted);
+      padding: 48px 0;
+      font-size: 0.9rem;
+    }
+    .spinner {
+      display: inline-block;
+      width: 24px; height: 24px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* back button */
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent);
+      font-size: 0.85rem;
+      cursor: pointer;
+      padding: 8px 0 16px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* queue panel */
+    .queue-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+    .queue-item.current { background: var(--surface); color: var(--accent); }
+    .queue-item-num { color: var(--muted); width: 20px; text-align: center; flex-shrink: 0; }
+    .queue-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .queue-item-artist { color: var(--muted); font-size: 0.78rem; }
+  </style>
+</head>
+<body>
+
+<div id="app">
+  <div id="header">
+    <h1>&#9835; Jukebox</h1>
+    <span class="server-info" id="server-label"></span>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="login-screen" class="screen active">
+    <h2>Connect</h2>
+    <div class="field">
+      <label>Server URL</label>
+      <input id="inp-server" type="url" placeholder="http://nas:4533" autocomplete="off" spellcheck="false" />
+    </div>
+    <div class="field">
+      <label>Username</label>
+      <input id="inp-user" type="text" autocomplete="username" />
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="inp-pass" type="password" autocomplete="current-password" />
+    </div>
+    <div id="login-error"></div>
+    <button class="btn" id="login-btn">Connect</button>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main-screen" class="screen">
+    <div id="tabs">
+      <div class="tab active" data-pane="albums">Albums</div>
+      <div class="tab" data-pane="artists">Artists</div>
+      <div class="tab" data-pane="playlists">Playlists</div>
+      <div class="tab" data-pane="search">Search</div>
+      <div class="tab" data-pane="queue">Queue</div>
+    </div>
+
+    <div id="content">
+      <!-- Albums -->
+      <div class="pane active" id="pane-albums">
+        <div class="state-msg"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Artists -->
+      <div class="pane" id="pane-artists">
+        <div class="state-msg"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Playlists -->
+      <div class="pane" id="pane-playlists">
+        <div class="state-msg"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Search -->
+      <div class="pane" id="pane-search">
+        <div id="search-bar">
+          <input id="search-input" type="search" placeholder="Artist, album, song…" />
+          <button id="search-go">Go</button>
+        </div>
+        <div id="search-results"></div>
+      </div>
+
+      <!-- Queue -->
+      <div class="pane" id="pane-queue">
+        <div id="queue-list" class="track-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOW PLAYING BAR -->
+  <div id="now-playing" style="display:none">
+    <div id="np-progress-wrap"><div id="np-progress-bar"></div></div>
+    <div id="np-art">♪</div>
+    <div id="np-info">
+      <div id="np-title">—</div>
+      <div id="np-artist">—</div>
+    </div>
+    <div id="np-controls">
+      <div class="ctrl-btn" id="btn-prev">&#9664;&#9664;</div>
+      <div class="ctrl-btn play-btn" id="btn-play">&#9654;</div>
+      <div class="ctrl-btn" id="btn-next">&#9654;&#9654;</div>
+    </div>
+    <div id="volume-wrap">
+      🔊<input type="range" id="volume" min="0" max="1" step="0.02" value="0.8">
+    </div>
+  </div>
+</div>
+
+<audio id="player"></audio>
+
+<script>
+// ─────────────────────────────────────────────
+//  State
+// ─────────────────────────────────────────────
+let cfg = { server: '', user: '', pass: '' };
+let queue = [];
+let queueIdx = -1;
+const player = document.getElementById('player');
+
+// ─────────────────────────────────────────────
+//  Subsonic API helpers
+// ─────────────────────────────────────────────
+function apiParams(extra = {}) {
+  const salt = Math.random().toString(36).slice(2);
+  // md5(password + salt) for token auth
+  const token = md5(cfg.pass + salt);
+  return new URLSearchParams({
+    u: cfg.user, t: token, s: salt,
+    v: '1.16.1', c: 'jukebox', f: 'json',
+    ...extra
+  });
+}
+
+async function api(method, extra = {}) {
+  const url = `${cfg.server}/rest/${method}?${apiParams(extra)}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const data = await r.json();
+  const res = data['subsonic-response'];
+  if (res.status !== 'ok') throw new Error(res.error?.message || 'API error');
+  return res;
+}
+
+function streamUrl(id) {
+  return `${cfg.server}/rest/stream?${apiParams({ id, maxBitRate: 0 })}`;
+}
+function coverUrl(id) {
+  return `${cfg.server}/rest/getCoverArt?${apiParams({ id, size: 300 })}`;
+}
+
+// ─────────────────────────────────────────────
+//  Login
+// ─────────────────────────────────────────────
+document.getElementById('login-btn').addEventListener('click', async () => {
+  const server = document.getElementById('inp-server').value.trim().replace(/\/$/, '');
+  const user = document.getElementById('inp-user').value.trim();
+  const pass = document.getElementById('inp-pass').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+
+  if (!server || !user || !pass) { errEl.textContent = 'All fields required.'; return; }
+
+  cfg = { server, user, pass };
+  try {
+    await api('ping');
+    // save to localStorage
+    localStorage.setItem('jukebox_cfg', JSON.stringify(cfg));
+    enterMain();
+  } catch(e) {
+    errEl.textContent = 'Connection failed: ' + e.message;
+  }
+});
+
+function enterMain() {
+  document.getElementById('login-screen').classList.remove('active');
+  document.getElementById('main-screen').classList.add('active');
+  document.getElementById('server-label').textContent = new URL(cfg.server).hostname;
+  loadAlbums();
+  loadArtists();
+  loadPlaylists();
+}
+
+// Try auto-login from saved config
+(function() {
+  try {
+    const saved = localStorage.getItem('jukebox_cfg');
+    if (saved) {
+      cfg = JSON.parse(saved);
+      document.getElementById('inp-server').value = cfg.server;
+      document.getElementById('inp-user').value = cfg.user;
+      document.getElementById('inp-pass').value = cfg.pass;
+      api('ping').then(() => enterMain()).catch(() => {});
+    }
+  } catch(e) {}
+})();
+
+// ─────────────────────────────────────────────
+//  Tabs
+// ─────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('pane-' + tab.dataset.pane).classList.add('active');
+  });
+});
+
+// ─────────────────────────────────────────────
+//  Albums
+// ─────────────────────────────────────────────
+async function loadAlbums() {
+  const pane = document.getElementById('pane-albums');
+  try {
+    const res = await api('getAlbumList2', { type: 'alphabeticalByName', size: 100 });
+    const albums = res.albumList2?.album || [];
+    if (!albums.length) { pane.innerHTML = '<div class="state-msg">No albums found.</div>'; return; }
+    pane.innerHTML = `<div class="grid">${albums.map(a => albumCard(a)).join('')}</div>`;
+    pane.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('click', () => openAlbum(card.dataset.id, card.dataset.name));
+    });
+  } catch(e) {
+    pane.innerHTML = `<div class="state-msg">Error: ${e.message}</div>`;
+  }
+}
+
+function albumCard(a) {
+  const img = a.coverArt ? `<img src="${coverUrl(a.coverArt)}" loading="lazy" onerror="this.style.display='none'">` : '💿';
+  return `<div class="card" data-id="${a.id}" data-name="${esc(a.name)}">
+    <div class="card-art">${img}</div>
+    <div class="card-info">
+      <div class="card-title">${esc(a.name)}</div>
+      <div class="card-sub">${esc(a.artist || '')}</div>
+    </div>
+  </div>`;
+}
+
+async function openAlbum(id, name) {
+  const pane = document.getElementById('pane-albums');
+  pane.innerHTML = `
+    <div class="back-btn" id="back-albums">&#8592; Albums</div>
+    <div class="state-msg"><div class="spinner"></div></div>`;
+  document.getElementById('back-albums').addEventListener('click', loadAlbums);
+  try {
+    const res = await api('getAlbum', { id });
+    const album = res.album;
+    const songs = album.song || [];
+    pane.innerHTML = `
+      <div class="back-btn" id="back-albums">&#8592; Albums</div>
+      <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:20px;flex-wrap:wrap">
+        <div style="width:100px;height:100px;border-radius:10px;overflow:hidden;background:#222;flex-shrink:0">
+          ${album.coverArt ? `<img src="${coverUrl(album.coverArt)}" style="width:100%;height:100%;object-fit:cover">` : '💿'}
+        </div>
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:1px">${esc(album.name)}</div>
+          <div style="color:var(--muted);font-size:0.85rem;margin-top:4px">${esc(album.artist || '')} · ${songs.length} tracks</div>
+          <button class="btn" id="play-all-btn" style="margin-top:12px;width:auto;padding:10px 24px;font-size:1rem">▶ Play All</button>
+        </div>
+      </div>
+      <div class="track-list">${songs.map((s, i) => trackRow(s, i)).join('')}</div>`;
+    document.getElementById('back-albums').addEventListener('click', loadAlbums);
+    document.getElementById('play-all-btn').addEventListener('click', () => playTracks(songs, 0));
+    pane.querySelectorAll('.track-row').forEach(row => {
+      row.addEventListener('click', () => playTracks(songs, parseInt(row.dataset.idx)));
+    });
+  } catch(e) {
+    pane.innerHTML = `<div class="back-btn" id="back-albums">&#8592; Albums</div><div class="state-msg">Error: ${e.message}</div>`;
+    document.getElementById('back-albums').addEventListener('click', loadAlbums);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Artists
+// ─────────────────────────────────────────────
+async function loadArtists() {
+  const pane = document.getElementById('pane-artists');
+  try {
+    const res = await api('getArtists');
+    const artists = (res.artists?.index || []).flatMap(i => i.artist || []);
+    if (!artists.length) { pane.innerHTML = '<div class="state-msg">No artists found.</div>'; return; }
+    pane.innerHTML = `<div class="grid">${artists.map(a => `
+      <div class="card" data-id="${a.id}" data-name="${esc(a.name)}">
+        <div class="card-art">${a.coverArt ? `<img src="${coverUrl(a.coverArt)}" loading="lazy" onerror="this.style.display='none'">` : '🎤'}</div>
+        <div class="card-info"><div class="card-title">${esc(a.name)}</div></div>
+      </div>`).join('')}</div>`;
+    pane.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('click', () => openArtist(card.dataset.id, card.dataset.name));
+    });
+  } catch(e) {
+    pane.innerHTML = `<div class="state-msg">Error: ${e.message}</div>`;
+  }
+}
+
+async function openArtist(id, name) {
+  const pane = document.getElementById('pane-artists');
+  pane.innerHTML = `<div class="back-btn" id="back-artists">&#8592; Artists</div><div class="state-msg"><div class="spinner"></div></div>`;
+  document.getElementById('back-artists').addEventListener('click', loadArtists);
+  try {
+    const res = await api('getArtist', { id });
+    const albums = res.artist?.album || [];
+    pane.innerHTML = `
+      <div class="back-btn" id="back-artists">&#8592; Artists</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;margin-bottom:16px">${esc(name)}</div>
+      <div class="grid">${albums.map(a => albumCard(a)).join('')}</div>`;
+    document.getElementById('back-artists').addEventListener('click', loadArtists);
+    pane.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('click', () => openAlbumInPane(pane, card.dataset.id, card.dataset.name, () => openArtist(id, name)));
+    });
+  } catch(e) {
+    pane.innerHTML = `<div class="back-btn" id="back-artists">&#8592; Artists</div><div class="state-msg">Error: ${e.message}</div>`;
+    document.getElementById('back-artists').addEventListener('click', loadArtists);
+  }
+}
+
+async function openAlbumInPane(pane, id, name, backFn) {
+  pane.innerHTML = `<div class="back-btn" id="back-pane">&#8592; Back</div><div class="state-msg"><div class="spinner"></div></div>`;
+  document.getElementById('back-pane').addEventListener('click', backFn);
+  try {
+    const res = await api('getAlbum', { id });
+    const album = res.album;
+    const songs = album.song || [];
+    pane.innerHTML = `
+      <div class="back-btn" id="back-pane">&#8592; Back</div>
+      <div style="margin-bottom:16px">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem">${esc(album.name)}</div>
+        <button class="btn" id="play-all-btn" style="margin-top:10px;width:auto;padding:10px 24px;font-size:1rem">▶ Play All</button>
+      </div>
+      <div class="track-list">${songs.map((s, i) => trackRow(s, i)).join('')}</div>`;
+    document.getElementById('back-pane').addEventListener('click', backFn);
+    document.getElementById('play-all-btn').addEventListener('click', () => playTracks(songs, 0));
+    pane.querySelectorAll('.track-row').forEach(row => {
+      row.addEventListener('click', () => playTracks(songs, parseInt(row.dataset.idx)));
+    });
+  } catch(e) {
+    pane.innerHTML = `<div class="back-btn" id="back-pane">&#8592; Back</div><div class="state-msg">Error: ${e.message}</div>`;
+    document.getElementById('back-pane').addEventListener('click', backFn);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Playlists
+// ─────────────────────────────────────────────
+async function loadPlaylists() {
+  const pane = document.getElementById('pane-playlists');
+  try {
+    const res = await api('getPlaylists');
+    const lists = res.playlists?.playlist || [];
+    if (!lists.length) { pane.innerHTML = '<div class="state-msg">No playlists found.</div>'; return; }
+    pane.innerHTML = `<div class="grid">${lists.map(p => `
+      <div class="card" data-id="${p.id}" data-name="${esc(p.name)}">
+        <div class="card-art">${p.coverArt ? `<img src="${coverUrl(p.coverArt)}" loading="lazy" onerror="this.style.display='none'">` : '🎵'}</div>
+        <div class="card-info">
+          <div class="card-title">${esc(p.name)}</div>
+          <div class="card-sub">${p.songCount || 0} tracks</div>
+        </div>
+      </div>`).join('')}</div>`;
+    pane.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('click', () => openPlaylist(card.dataset.id, card.dataset.name));
+    });
+  } catch(e) {
+    pane.innerHTML = `<div class="state-msg">Error: ${e.message}</div>`;
+  }
+}
+
+async function openPlaylist(id, name) {
+  const pane = document.getElementById('pane-playlists');
+  pane.innerHTML = `<div class="back-btn" id="back-pl">&#8592; Playlists</div><div class="state-msg"><div class="spinner"></div></div>`;
+  document.getElementById('back-pl').addEventListener('click', loadPlaylists);
+  try {
+    const res = await api('getPlaylist', { id });
+    const songs = res.playlist?.entry || [];
+    pane.innerHTML = `
+      <div class="back-btn" id="back-pl">&#8592; Playlists</div>
+      <div style="margin-bottom:16px">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem">${esc(name)}</div>
+        <button class="btn" id="play-all-btn" style="margin-top:10px;width:auto;padding:10px 24px;font-size:1rem">▶ Play All</button>
+      </div>
+      <div class="track-list">${songs.map((s, i) => trackRow(s, i)).join('')}</div>`;
+    document.getElementById('back-pl').addEventListener('click', loadPlaylists);
+    document.getElementById('play-all-btn').addEventListener('click', () => playTracks(songs, 0));
+    pane.querySelectorAll('.track-row').forEach(row => {
+      row.addEventListener('click', () => playTracks(songs, parseInt(row.dataset.idx)));
+    });
+  } catch(e) {
+    pane.innerHTML = `<div class="back-btn" id="back-pl">&#8592; Playlists</div><div class="state-msg">Error: ${e.message}</div>`;
+    document.getElementById('back-pl').addEventListener('click', loadPlaylists);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Search
+// ─────────────────────────────────────────────
+document.getElementById('search-go').addEventListener('click', doSearch);
+document.getElementById('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') doSearch(); });
+
+async function doSearch() {
+  const q = document.getElementById('search-input').value.trim();
+  const out = document.getElementById('search-results');
+  if (!q) return;
+  out.innerHTML = '<div class="state-msg"><div class="spinner"></div></div>';
+  try {
+    const res = await api('search3', { query: q, artistCount: 5, albumCount: 10, songCount: 20 });
+    const r = res.searchResult3 || {};
+    const songs = r.song || [];
+    const albums = r.album || [];
+    let html = '';
+    if (albums.length) {
+      html += `<div style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:10px;color:var(--accent)">Albums</div>`;
+      html += `<div class="grid" style="margin-bottom:20px">${albums.map(a => albumCard(a)).join('')}</div>`;
+    }
+    if (songs.length) {
+      html += `<div style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:1px;margin-bottom:10px;color:var(--accent)">Songs</div>`;
+      html += `<div class="track-list">${songs.map((s, i) => trackRow(s, i)).join('')}</div>`;
+    }
+    if (!html) html = '<div class="state-msg">No results.</div>';
+    out.innerHTML = html;
+    out.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('click', () => openAlbumInPane(
+        document.getElementById('pane-search'), card.dataset.id, card.dataset.name,
+        () => { out.innerHTML = ''; }
+      ));
+    });
+    const songArr = songs;
+    out.querySelectorAll('.track-row').forEach(row => {
+      row.addEventListener('click', () => playTracks(songArr, parseInt(row.dataset.idx)));
+    });
+  } catch(e) {
+    out.innerHTML = `<div class="state-msg">Error: ${e.message}</div>`;
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Playback
+// ─────────────────────────────────────────────
+function playTracks(tracks, startIdx) {
+  queue = tracks;
+  queueIdx = startIdx;
+  playAt(queueIdx);
+  renderQueue();
+}
+
+function playAt(idx) {
+  const track = queue[idx];
+  if (!track) return;
+  queueIdx = idx;
+  player.src = streamUrl(track.id);
+  player.volume = parseFloat(document.getElementById('volume').value);
+  player.play().catch(() => {});
+  updateNowPlaying(track);
+  renderQueue();
+}
+
+function updateNowPlaying(track) {
+  document.getElementById('now-playing').style.display = 'flex';
+  document.getElementById('np-title').textContent = track.title || track.name || '—';
+  document.getElementById('np-artist').textContent = track.artist || '—';
+  const artEl = document.getElementById('np-art');
+  if (track.coverArt) {
+    artEl.innerHTML = `<img src="${coverUrl(track.coverArt)}" onerror="this.style.display='none'">`;
+  } else {
+    artEl.innerHTML = '♪';
+  }
+  document.getElementById('btn-play').innerHTML = '⏸';
+  document.title = `${track.title || '—'} · Jukebox`;
+}
+
+player.addEventListener('ended', () => {
+  if (queueIdx < queue.length - 1) playAt(queueIdx + 1);
+  else { document.getElementById('btn-play').innerHTML = '▶'; document.title = 'Jukebox'; }
+});
+
+player.addEventListener('timeupdate', () => {
+  if (!player.duration) return;
+  const pct = (player.currentTime / player.duration) * 100;
+  document.getElementById('np-progress-bar').style.width = pct + '%';
+});
+
+document.getElementById('np-progress-wrap').addEventListener('click', e => {
+  if (!player.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  player.currentTime = ((e.clientX - rect.left) / rect.width) * player.duration;
+});
+
+document.getElementById('btn-play').addEventListener('click', () => {
+  if (player.paused) { player.play(); document.getElementById('btn-play').innerHTML = '⏸'; }
+  else { player.pause(); document.getElementById('btn-play').innerHTML = '▶'; }
+});
+document.getElementById('btn-prev').addEventListener('click', () => {
+  if (player.currentTime > 3) { player.currentTime = 0; return; }
+  if (queueIdx > 0) playAt(queueIdx - 1);
+});
+document.getElementById('btn-next').addEventListener('click', () => {
+  if (queueIdx < queue.length - 1) playAt(queueIdx + 1);
+});
+document.getElementById('volume').addEventListener('input', e => {
+  player.volume = parseFloat(e.target.value);
+});
+
+// ─────────────────────────────────────────────
+//  Queue pane
+// ─────────────────────────────────────────────
+function renderQueue() {
+  const el = document.getElementById('queue-list');
+  if (!queue.length) { el.innerHTML = '<div class="state-msg">Queue is empty.</div>'; return; }
+  el.innerHTML = queue.map((t, i) => `
+    <div class="queue-item ${i === queueIdx ? 'current' : ''}" data-idx="${i}" style="cursor:pointer">
+      <div class="queue-item-num">${i === queueIdx ? '▶' : i + 1}</div>
+      <div style="flex:1;min-width:0">
+        <div class="queue-item-name">${esc(t.title || t.name || '—')}</div>
+        <div class="queue-item-artist">${esc(t.artist || '')}</div>
+      </div>
+    </div>`).join('');
+  el.querySelectorAll('.queue-item').forEach(row => {
+    row.addEventListener('click', () => playAt(parseInt(row.dataset.idx)));
+  });
+}
+
+// ─────────────────────────────────────────────
+//  Helpers
+// ─────────────────────────────────────────────
+function trackRow(s, i) {
+  const dur = s.duration ? `${Math.floor(s.duration/60)}:${String(s.duration%60).padStart(2,'0')}` : '';
+  return `<div class="track-row" data-idx="${i}">
+    <div class="track-num">${i + 1}</div>
+    <div class="track-name">${esc(s.title || s.name || '—')}</div>
+    <div class="track-duration">${dur}</div>
+  </div>`;
+}
+
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// minimal md5 (RFC 1321) for Subsonic token auth
+// via https://github.com/blueimp/JavaScript-MD5 (MIT)
+!function(n){"use strict";function d(n,t){var r=(65535&n)+(65535&t);return(n>>16)+(t>>16)+(r>>16)<<16|65535&r}function f(n,t,r,e,o,u){return d((c=d(d(t,n),d(e,u)))<<(f=o)|c>>>32-f,r);var c,f}function l(n,t,r,e,o,u,c){return f(t&r|~t&e,n,t,o,u,c)}function g(n,t,r,e,o,u,c){return f(t&e|r&~e,n,t,o,u,c)}function v(n,t,r,e,o,u,c){return f(t^r^e,n,t,o,u,c)}function m(n,t,r,e,o,u,c){return f(r^(t|~e),n,t,o,u,c)}function i(n,t){var r,e,o,u;n[t>>5]|=128<<t%32,n[14+(t+64>>>9<<4)]=t;var c=1732584193,f=-271733879,i=-1732584194,a=271733878;for(r=0;r<n.length;r+=16)e=c,o=f,u=i,a=m(a=m(a=m(a=m(a=v(a=v(a=v(a=v(a=g(a=g(a=g(a=g(a=l(a=l(a=l(a=l(a,c=l(c,f=l(f,i=l(i,a,c,f,n[r],7,-680876936),a,c,n[r+1],12,-389564586),i,a,n[r+2],17,606105819),f,i,n[r+3],22,-1044525330),c=l(c,f=l(f,i=l(i,a,c,f,n[r+4],7,-176418897),a,c,n[r+5],12,1200080426),i,a,n[r+6],17,-1473231341),f,i,n[r+7],22,-45705983),c=l(c,f=l(f,i=l(i,a,c,f,n[r+8],7,1770035416),a,c,n[r+9],12,-1958414417),i,a,n[r+10],17,-42063),f,i,n[r+11],22,-1990404162),c=l(c,f=l(f,i=l(i,a,c,f,n[r+12],7,1804603682),a,c,n[r+13],12,-40341101),i,a,n[r+14],17,-1502002290),f,i,n[r+15],22,1236535329),c=g(c,f=g(f,i=g(i,a,c,f,n[r+1],5,-165796510),a,c,n[r+6],9,-1069501632),i,a,n[r+11],14,643717713),f,i,n[r],20,-373897302),c=g(c,f=g(f,i=g(i,a,c,f,n[r+5],5,-701558691),a,c,n[r+10],9,38016083),i,a,n[r+15],14,-660478335),f,i,n[r+4],20,-405537848),c=g(c,f=g(f,i=g(i,a,c,f,n[r+9],5,568446438),a,c,n[r+14],9,-1019803690),i,a,n[r+3],14,-187363961),f,i,n[r+8],20,1163531501),c=g(c,f=g(f,i=g(i,a,c,f,n[r+13],5,-1444681467),a,c,n[r+2],9,-51403784),i,a,n[r+7],14,1735328473),f,i,n[r+12],20,-1926607734),c=v(c,f=v(f,i=v(i,a,c,f,n[r+5],4,-378558),a,c,n[r+8],11,-2022574463),i,a,n[r+11],16,1839030562),f,i,n[r+14],23,-35309556),c=v(c,f=v(f,i=v(i,a,c,f,n[r+1],4,-1530992060),a,c,n[r+4],11,1272893353),i,a,n[r+7],16,-155497632),f,i,n[r+10],23,-1094730640),c=v(c,f=v(f,i=v(i,a,c,f,n[r+13],4,681279174),a,c,n[r],11,-358537222),i,a,n[r+3],16,-722521979),f,i,n[r+6],23,76029189),c=v(c,f=v(f,i=v(i,a,c,f,n[r+9],4,-640364487),a,c,n[r+12],11,-421815835),i,a,n[r+15],16,530742520),f,i,n[r+2],23,-995338651),c=m(c,f=m(f,i=m(i,a,c,f,n[r],6,-198630844),a,c,n[r+7],10,1126891415),i,a,n[r+14],15,-1416354905),f,i,n[r+5],21,-57434055),c=m(c,f=m(f,i=m(i,a,c,f,n[r+12],6,1700485571),a,c,n[r+3],10,-1894986606),i,a,n[r+10],15,-1051523),f,i,n[r+1],21,-2054922799),c=m(c,f=m(f,i=m(i,a,c,f,n[r+8],6,1873313359),a,c,n[r+15],10,-30611744),i,a,n[r+6],15,-1560198380),f,i,n[r+13],21,1309151649),c=m(c,f=m(f,i=m(i,a,c,f,n[r+4],6,-145523070),a,c,n[r+11],10,-1120210379),i,a,n[r+2],15,718787259),f,i,n[r+9],21,-343485551),c=d(c,e),f=d(f,o),i=d(i,u),a=d(a,a0);return[c,f,i,a]}function a(n){var t,r="",e=32*n.length;for(t=0;t<e;t+=8)r+=String.fromCharCode(n[t>>5]>>>t%32&255);return r}function b(n){var t,r=[];for(r[(n.length>>2)-1]=void 0,t=0;t<r.length;t+=1)r[t]=0;var e=8*n.length;for(t=0;t<e;t+=8)r[t>>5]|=(255&n.charCodeAt(t/8))<<t%32;return r}function e(n){var t,r,e="0123456789abcdef",o="";for(r=0;r<n.length;r+=1)t=n.charCodeAt(r),o+=e.charAt(t>>>4&15)+e.charAt(15&t);return o}function r(n){return unescape(encodeURIComponent(n))}function o(n){return a(i(b(n=r(n)),8*n.length))}function u(n,t){return function(n,t){var r,e=b(n),o=[],u=[];for(o[15]=u[15]=void 0,e.length>16&&(e=i(e,8*n.length)),r=0;r<16;r+=1)o[r]=909522486^e[r],u[r]=1549556828^e[r];return a(i(o.concat(b(t)),512+8*t.length))}(r(n),r(t))}function t(n,t,r){return t?r?u(t,n):e(u(t,n)):r?o(n):e(o(n))}n.md5=t}(window);
+</script>
+</body>
+</html>
