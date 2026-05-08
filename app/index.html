@@ -543,24 +543,24 @@
     /* album detail header */
     .album-header {
       display: flex;
-      gap: 16px;
-      align-items: flex-start;
+      flex-direction: column;
       margin-bottom: 20px;
-      flex-wrap: wrap;
     }
     .album-header-art {
-      width: 96px; height: 96px;
-      border-radius: 8px;
+      width: 100%;
+      aspect-ratio: 1;
+      max-height: 340px;
+      border-radius: 10px;
       overflow: hidden;
       background: var(--surface2);
-      flex-shrink: 0;
+      margin-bottom: 14px;
     }
     .album-header-art img { width: 100%; height: 100%; object-fit: cover; }
     .album-header-title {
       font-family: 'Barlow Condensed', sans-serif;
       font-weight: 900;
       font-style: italic;
-      font-size: 1.8rem;
+      font-size: 2rem;
       letter-spacing: 1px;
       text-transform: lowercase;
       line-height: 1;
@@ -910,11 +910,9 @@ async function openAlbumInArtists(id, name, backFn) {
       <div class="back-btn" id="back-pane">&#8592; Back</div>
       <div class="album-header">
         <div class="album-header-art">${album.coverArt ? `<img src="${coverUrl(album.coverArt)}">` : '💿'}</div>
-        <div>
-          <div class="album-header-title">${esc(album.name)}</div>
-          <div class="album-header-meta">${esc(album.artist || '')} · ${songs.length} tracks</div>
-          <button class="btn" id="play-all-btn" style="margin-top:12px;width:auto;padding:10px 28px;font-size:1.1rem">▶ Play All</button>
-        </div>
+        <div class="album-header-title">${esc(album.name)}</div>
+        <div class="album-header-meta">${esc(album.artist || '')} · ${songs.length} tracks</div>
+        <button class="btn" id="play-all-btn" style="margin-top:12px;width:auto;padding:10px 28px;font-size:1.1rem">▶ Play All</button>
       </div>
       <div class="track-list">${songs.map((s, i) => trackRow(s, i)).join('')}</div>`;
     document.getElementById('back-pane').addEventListener('click', backFn);
@@ -969,11 +967,9 @@ async function openAlbum(id, name) {
       <div class="back-btn" id="back-albums">&#8592; Albums</div>
       <div class="album-header">
         <div class="album-header-art">${album.coverArt ? `<img src="${coverUrl(album.coverArt)}">` : '💿'}</div>
-        <div>
-          <div class="album-header-title">${esc(album.name)}</div>
-          <div class="album-header-meta">${esc(album.artist || '')} · ${songs.length} tracks</div>
-          <button class="btn" id="play-all-btn" style="margin-top:12px;width:auto;padding:10px 28px;font-size:1.1rem">▶ Play All</button>
-        </div>
+        <div class="album-header-title">${esc(album.name)}</div>
+        <div class="album-header-meta">${esc(album.artist || '')} · ${songs.length} tracks</div>
+        <button class="btn" id="play-all-btn" style="margin-top:12px;width:auto;padding:10px 28px;font-size:1.1rem">▶ Play All</button>
       </div>
       <div class="track-list">${songs.map((s, i) => trackRow(s, i)).join('')}</div>`;
     document.getElementById('back-albums').addEventListener('click', loadAlbums);
@@ -998,11 +994,9 @@ async function openAlbumInPane(pane, id, name, backFn) {
       <div class="back-btn" id="back-pane">&#8592; Back</div>
       <div class="album-header">
         <div class="album-header-art">${album.coverArt ? `<img src="${coverUrl(album.coverArt)}">` : '💿'}</div>
-        <div>
-          <div class="album-header-title">${esc(album.name)}</div>
-          <div class="album-header-meta">${esc(album.artist || '')} · ${songs.length} tracks</div>
-          <button class="btn" id="play-all-btn" style="margin-top:12px;width:auto;padding:10px 28px;font-size:1.1rem">▶ Play All</button>
-        </div>
+        <div class="album-header-title">${esc(album.name)}</div>
+        <div class="album-header-meta">${esc(album.artist || '')} · ${songs.length} tracks</div>
+        <button class="btn" id="play-all-btn" style="margin-top:12px;width:auto;padding:10px 28px;font-size:1.1rem">▶ Play All</button>
       </div>
       <div class="track-list">${songs.map((s, i) => trackRow(s, i)).join('')}</div>`;
     document.getElementById('back-pane').addEventListener('click', backFn);
