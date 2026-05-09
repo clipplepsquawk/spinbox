@@ -1,12 +1,17 @@
 services:
   jukebox:
-    image: ghcr.io/${GITHUB_USERNAME}/jukebox-app:latest
+    image: ghcr.io/${GITHUB_USERNAME}/spinbox:latest
     container_name: jukebox
     restart: unless-stopped
     ports:
       - "${JUKEBOX_PORT:-3080}:80"
+    environment:
+      # Optional: provide a Last.fm API key to show artist bios and album info
+      # Get a free key at https://www.last.fm/api/account/create
+      LASTFM_API_KEY: ${LASTFM_API_KEY:-}
+    networks:
+      - nginx_default
 
-    # Optional: if you want to live-edit the app without rebuilding,
-    # mount the app folder directly. Comment out for production.
-    # volumes:
-    #   - ./app:/usr/share/nginx/html:ro
+networks:
+  nginx_default:
+    external: true
