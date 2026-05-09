@@ -492,6 +492,143 @@
       cursor: pointer;
     }
 
+    /* ── Fullscreen overlay ── */
+    #fs-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: #000;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #fs-overlay.active { display: flex; }
+
+    #fs-art-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      filter: blur(40px) brightness(0.35) saturate(1.4);
+      transform: scale(1.1);
+    }
+
+    #fs-art-img {
+      position: relative;
+      width: min(80vw, 80vh, 420px);
+      height: min(80vw, 80vh, 420px);
+      border-radius: 12px;
+      object-fit: cover;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+      margin-bottom: 28px;
+      flex-shrink: 0;
+    }
+
+    #fs-art-placeholder {
+      position: relative;
+      width: min(80vw, 80vh, 420px);
+      height: min(80vw, 80vh, 420px);
+      border-radius: 12px;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 6rem;
+      margin-bottom: 28px;
+      flex-shrink: 0;
+    }
+
+    #fs-close {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.7);
+      font-size: 1.3rem;
+      cursor: pointer;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.1);
+      transition: background .15s;
+      z-index: 1000;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #fs-close:active { background: rgba(255,255,255,0.25); }
+
+    #fs-info {
+      position: relative;
+      text-align: center;
+      margin-bottom: 24px;
+      padding: 0 24px;
+      max-width: 500px;
+    }
+    #fs-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 900;
+      font-style: italic;
+      font-size: 1.8rem;
+      letter-spacing: 1px;
+      text-transform: lowercase;
+      color: #fff;
+      line-height: 1.1;
+      margin-bottom: 6px;
+    }
+    #fs-artist {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.6);
+    }
+
+    #fs-progress-wrap {
+      position: relative;
+      width: min(80vw, 420px);
+      height: 3px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 2px;
+      cursor: pointer;
+      margin-bottom: 28px;
+    }
+    #fs-progress-bar {
+      height: 100%;
+      background: #fff;
+      border-radius: 2px;
+      width: 0%;
+      transition: width .5s linear;
+    }
+
+    #fs-controls {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .fs-btn {
+      width: 64px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      cursor: pointer;
+      color: rgba(255,255,255,0.8);
+      font-size: 1.3rem;
+      transition: background .12s, transform .1s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .fs-btn:active { background: rgba(255,255,255,0.15); transform: scale(0.93); }
+    .fs-play-btn {
+      width: 76px;
+      height: 76px;
+      background: #fff;
+      color: #000;
+      font-size: 1.6rem;
+    }
+    .fs-play-btn:active { opacity: 0.85; background: #fff; }
+
     /* loading / empty states */
     .state-msg {
       text-align: center;
@@ -786,10 +923,26 @@
     </div>
   </div>
 
+  <!-- FULLSCREEN NOW PLAYING OVERLAY -->
+  <div id="fs-overlay">
+    <div id="fs-art-bg"></div>
+    <div id="fs-close">✕</div>
+    <div id="fs-info">
+      <div id="fs-title">—</div>
+      <div id="fs-artist">—</div>
+    </div>
+    <div id="fs-progress-wrap"><div id="fs-progress-bar"></div></div>
+    <div id="fs-controls">
+      <div class="fs-btn" id="fs-prev">&#9664;&#9664;</div>
+      <div class="fs-btn fs-play-btn" id="fs-play">&#9654;</div>
+      <div class="fs-btn" id="fs-next">&#9654;&#9654;</div>
+    </div>
+  </div>
+
   <!-- NOW PLAYING BAR -->
   <div id="now-playing" style="display:none">
     <div id="np-progress-wrap"><div id="np-progress-bar"></div></div>
-    <div id="np-art">♪</div>
+    <div id="np-art" style="cursor:pointer">♪</div>
     <div id="np-info">
       <div id="np-title">—</div>
       <div id="np-artist">—</div>
@@ -1607,7 +1760,7 @@ function playAt(idx) {
   player.src = streamUrl(track.id);
   player.volume = parseFloat(document.getElementById('volume').value);
   player.play().catch(() => {});
-  updateNowPlaying(track);
+  (typeof patchedUpdateNowPlaying !== "undefined" ? patchedUpdateNowPlaying : updateNowPlaying)(track);
   renderQueue();
 }
 
@@ -1834,6 +1987,122 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
 }
+// ─────────────────────────────────────────────
+//  Fullscreen Now Playing overlay
+// ─────────────────────────────────────────────
+const fsOverlay = document.getElementById('fs-overlay');
+
+function openFullscreen() {
+  const title    = document.getElementById('np-title').textContent;
+  const artist   = document.getElementById('np-artist').textContent;
+  const npArtEl  = document.getElementById('np-art');
+  const imgEl    = npArtEl.querySelector('img');
+
+  document.getElementById('fs-title').textContent  = title;
+  document.getElementById('fs-artist').textContent = artist;
+
+  // Build art element
+  const artBg = document.getElementById('fs-art-bg');
+  // Remove old art
+  const oldImg = document.getElementById('fs-art-img');
+  const oldPlaceholder = document.getElementById('fs-art-placeholder');
+  if (oldImg) oldImg.remove();
+  if (oldPlaceholder) oldPlaceholder.remove();
+
+  if (imgEl && imgEl.src) {
+    artBg.style.backgroundImage = `url(${imgEl.src})`;
+    const img = document.createElement('img');
+    img.id  = 'fs-art-img';
+    img.src = imgEl.src;
+    fsOverlay.insertBefore(img, document.getElementById('fs-info'));
+  } else {
+    artBg.style.backgroundImage = '';
+    const ph = document.createElement('div');
+    ph.id = 'fs-art-placeholder';
+    ph.textContent = '♪';
+    fsOverlay.insertBefore(ph, document.getElementById('fs-info'));
+  }
+
+  // Sync progress
+  syncFsProgress();
+  // Sync play/pause state
+  document.getElementById('fs-play').innerHTML = player.paused ? '&#9654;' : '&#9646;&#9646;';
+
+  fsOverlay.classList.add('active');
+  // prevent body scroll
+  document.body.style.overflow = 'hidden';
+}
+
+function closeFullscreen() {
+  fsOverlay.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+function syncFsProgress() {
+  if (!player.duration) return;
+  const pct = (player.currentTime / player.duration) * 100;
+  document.getElementById('fs-progress-bar').style.width = pct + '%';
+}
+
+// Open on tapping album art in now playing bar
+document.getElementById('np-art').addEventListener('click', () => {
+  if (queue.length) openFullscreen();
+});
+
+// Close button
+document.getElementById('fs-close').addEventListener('click', closeFullscreen);
+
+// Progress bar scrubbing in fullscreen
+document.getElementById('fs-progress-wrap').addEventListener('click', e => {
+  if (!player.duration) return;
+  const rect = e.currentTarget.getBoundingClientRect();
+  player.currentTime = ((e.clientX - rect.left) / rect.width) * player.duration;
+});
+
+// Fullscreen play/pause
+document.getElementById('fs-play').addEventListener('click', () => {
+  if (player.paused) {
+    player.play();
+    document.getElementById('fs-play').innerHTML = '&#9646;&#9646;';
+    document.getElementById('btn-play').innerHTML = '⏸';
+  } else {
+    player.pause();
+    document.getElementById('fs-play').innerHTML = '&#9654;';
+    document.getElementById('btn-play').innerHTML = '▶';
+  }
+});
+
+// Fullscreen prev/next
+document.getElementById('fs-prev').addEventListener('click', () => {
+  if (player.currentTime > 3) { player.currentTime = 0; return; }
+  if (queueIdx > 0) playAt(queueIdx - 1);
+});
+document.getElementById('fs-next').addEventListener('click', () => {
+  if (queueIdx < queue.length - 1) playAt(queueIdx + 1);
+});
+
+// Keep fullscreen in sync with playback state
+player.addEventListener('timeupdate', syncFsProgress);
+
+player.addEventListener('play',  () => {
+  document.getElementById('fs-play').innerHTML = '&#9646;&#9646;';
+});
+player.addEventListener('pause', () => {
+  document.getElementById('fs-play').innerHTML = '&#9654;';
+});
+
+// When track changes update fullscreen if open
+const _origUpdateNowPlaying = updateNowPlaying;
+// We patch updateNowPlaying to also refresh the overlay if it's open
+function patchedUpdateNowPlaying(track) {
+  _origUpdateNowPlaying(track);
+  if (fsOverlay.classList.contains('active')) {
+    // Small delay to let np-art img load
+    setTimeout(openFullscreen, 150);
+  }
+}
+
+
 </script>
 </body>
 </html>
