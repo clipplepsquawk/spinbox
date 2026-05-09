@@ -45,8 +45,7 @@
       display: grid;
       grid-template-rows: auto 1fr auto;
       height: 100vh;
-      max-width: 1200px;
-      margin: 0 auto;
+      width: 100%;
     }
 
     /* ── Header ── */
@@ -186,6 +185,11 @@
       white-space: nowrap;
       -webkit-tap-highlight-color: transparent;
     }
+    @media (min-width: 1024px) {
+      .tab { padding: 14px 24px; font-size: 1.05rem; }
+      #header h1 { font-size: 2.4rem; }
+      #header { padding: 16px 32px 14px; }
+    }
     .tab.active { color: var(--accent); border-color: var(--accent); }
 
     /* content panes */
@@ -201,6 +205,14 @@
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
       padding: 16px;
+    }
+    @media (min-width: 1024px) {
+      .pane { padding: 24px 32px; }
+      #artists-inner { padding: 24px 48px 24px 32px; }
+    }
+    @media (min-width: 1440px) {
+      .pane { padding: 32px 48px; }
+      #artists-inner { padding: 32px 48px 32px 48px; }
     }
     .pane.active { display: block; }
 
@@ -338,6 +350,12 @@
     }
     @media (min-width: 600px) {
       .grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+    }
+    @media (min-width: 1024px) {
+      .grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+    }
+    @media (min-width: 1440px) {
+      .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 18px; }
     }
 
     .card {
@@ -703,7 +721,13 @@
     }
     .album-art-col {
       flex-shrink: 0;
-      width: min(40%, 280px);
+      width: min(40%, 340px);
+    }
+    @media (min-width: 1024px) {
+      .album-art-col { width: min(35%, 400px); }
+    }
+    @media (min-width: 1440px) {
+      .album-art-col { width: min(30%, 480px); }
     }
     .album-art-col .album-header-art {
       width: 100%;
