@@ -483,25 +483,34 @@
     }
     #np-progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width .5s linear; }
 
-    #np-controls { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    #np-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
     .ctrl-btn {
-      width: 44px; height: 44px;
+      width: 52px; height: 52px;
       display: flex; align-items: center; justify-content: center;
       border-radius: 50%;
       cursor: pointer;
       color: var(--muted);
       transition: background .12s, color .12s;
       -webkit-tap-highlight-color: transparent;
-      font-size: 1rem;
+      font-size: 1.15rem;
     }
     .ctrl-btn:active { background: var(--surface2); color: var(--accent); }
     .ctrl-btn.play-btn {
       background: var(--accent);
       color: #000;
-      width: 48px; height: 48px;
-      font-size: 1.1rem;
+      width: 58px; height: 58px;
+      font-size: 1.3rem;
     }
     .ctrl-btn.play-btn:active { opacity: 0.8; }
+
+    #np-time {
+      font-size: 0.72rem;
+      color: var(--muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.5px;
+    }
 
     #volume-wrap { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.9rem; }
     #volume-wrap input[type=range] {
@@ -601,6 +610,20 @@
       color: rgba(255,255,255,0.6);
     }
 
+    #fs-time-wrap {
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      width: min(80vw, 420px);
+      margin-bottom: 6px;
+    }
+    #fs-time-current, #fs-time-total {
+      font-size: 0.8rem;
+      color: rgba(255,255,255,0.5);
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.5px;
+    }
+
     #fs-progress-wrap {
       position: relative;
       width: min(80vw, 420px);
@@ -625,25 +648,25 @@
       gap: 16px;
     }
     .fs-btn {
-      width: 64px;
-      height: 64px;
+      width: 76px;
+      height: 76px;
       display: flex;
       align-items: center;
       justify-content: center;
       border-radius: 50%;
       cursor: pointer;
       color: rgba(255,255,255,0.8);
-      font-size: 1.3rem;
+      font-size: 1.5rem;
       transition: background .12s, transform .1s;
       -webkit-tap-highlight-color: transparent;
     }
     .fs-btn:active { background: rgba(255,255,255,0.15); transform: scale(0.93); }
     .fs-play-btn {
-      width: 76px;
-      height: 76px;
+      width: 92px;
+      height: 92px;
       background: #fff;
       color: #000;
-      font-size: 1.6rem;
+      font-size: 1.9rem;
     }
     .fs-play-btn:active { opacity: 0.85; background: #fff; }
 
@@ -955,6 +978,10 @@
       <div id="fs-title">—</div>
       <div id="fs-artist">—</div>
     </div>
+    <div id="fs-time-wrap">
+      <span id="fs-time-current">0:00</span>
+      <span id="fs-time-total">0:00</span>
+    </div>
     <div id="fs-progress-wrap"><div id="fs-progress-bar"></div></div>
     <div id="fs-controls">
       <div class="fs-btn" id="fs-prev">&#9664;&#9664;</div>
@@ -971,6 +998,7 @@
       <div id="np-title">—</div>
       <div id="np-artist">—</div>
     </div>
+    <div id="np-time">0:00 / 0:00</div>
     <div id="np-controls">
       <div class="ctrl-btn" id="btn-prev">&#9664;&#9664;</div>
       <div class="ctrl-btn play-btn" id="btn-play">&#9654;</div>
@@ -1798,6 +1826,12 @@ function updateNowPlaying(track) {
     : '♪';
   document.getElementById('btn-play').innerHTML = '⏸';
   document.title = `${track.title || '—'} · Spinbox`;
+  const npTime = document.getElementById('np-time');
+  if (npTime) npTime.textContent = '0:00 / 0:00';
+  const fsCurrent = document.getElementById('fs-time-current');
+  const fsTotal   = document.getElementById('fs-time-total');
+  if (fsCurrent) fsCurrent.textContent = '0:00';
+  if (fsTotal)   fsTotal.textContent   = '0:00';
 }
 
 player.addEventListener('ended', () => {
@@ -1807,7 +1841,16 @@ player.addEventListener('ended', () => {
 
 player.addEventListener('timeupdate', () => {
   if (!player.duration) return;
-  document.getElementById('np-progress-bar').style.width = (player.currentTime / player.duration * 100) + '%';
+  const pct = player.currentTime / player.duration * 100;
+  document.getElementById('np-progress-bar').style.width = pct + '%';
+  // mini bar time
+  const npTime = document.getElementById('np-time');
+  if (npTime) npTime.textContent = `${formatTime(player.currentTime)} / ${formatTime(player.duration)}`;
+  // fullscreen time
+  const fsCurrent = document.getElementById('fs-time-current');
+  const fsTotal   = document.getElementById('fs-time-total');
+  if (fsCurrent) fsCurrent.textContent = formatTime(player.currentTime);
+  if (fsTotal)   fsTotal.textContent   = formatTime(player.duration);
 });
 
 document.getElementById('np-progress-wrap').addEventListener('click', e => {
@@ -1944,6 +1987,13 @@ function trackRow(s, i) {
   </div>`;
 }
 
+function formatTime(secs) {
+  if (!secs || isNaN(secs)) return '0:00';
+  const m = Math.floor(secs / 60);
+  const s = Math.floor(secs % 60);
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
 function esc(str) {
   return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -2066,6 +2116,10 @@ function syncFsProgress() {
   if (!player.duration) return;
   const pct = (player.currentTime / player.duration) * 100;
   document.getElementById('fs-progress-bar').style.width = pct + '%';
+  const fsCurrent = document.getElementById('fs-time-current');
+  const fsTotal   = document.getElementById('fs-time-total');
+  if (fsCurrent) fsCurrent.textContent = formatTime(player.currentTime);
+  if (fsTotal)   fsTotal.textContent   = formatTime(player.duration);
 }
 
 // Open on tapping album art in now playing bar
