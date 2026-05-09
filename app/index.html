@@ -530,6 +530,26 @@
     }
     .ctrl-btn.play-btn:active { opacity: 0.8; }
 
+    #np-shuffle-repeat {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+    .mode-btn {
+      width: 38px; height: 38px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      cursor: pointer;
+      color: var(--muted2);
+      transition: color .15s, background .12s;
+      -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
+      font-size: 0.85rem;
+    }
+    .mode-btn:active { background: var(--surface2); }
+    .mode-btn.active { color: var(--accent); }
+
     #np-time {
       font-size: 0.72rem;
       color: var(--muted);
@@ -1037,7 +1057,15 @@
       <div class="pane" id="pane-queue">
         <div id="queue-header" style="display:none;justify-content:space-between;align-items:center;margin-bottom:14px;flex-shrink:0">
           <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-style:italic;font-size:1.1rem;letter-spacing:1px;text-transform:lowercase;color:var(--muted)">up next</span>
-          <button id="clear-queue-btn" style="background:none;border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:6px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-style:italic;font-size:0.9rem;letter-spacing:1px;text-transform:lowercase;cursor:pointer">clear all</button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="shuffle-queue-btn" style="background:none;border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:6px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-style:italic;font-size:0.9rem;letter-spacing:1px;text-transform:lowercase;cursor:pointer;display:flex;align-items:center;gap:6px">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 4h3l8 8h2M14 4h-3L9.5 5.5M6.5 10.5L5 12H1M14 12v-3M14 4v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              shuffle
+            </button>
+            <button id="clear-queue-btn" style="background:none;border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:6px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-style:italic;font-size:0.9rem;letter-spacing:1px;text-transform:lowercase;cursor:pointer">clear all</button>
+          </div>
         </div>
         <div id="queue-list" class="track-list"></div>
       </div>
@@ -1078,6 +1106,19 @@
       <div class="ctrl-btn play-btn" id="btn-play">&#9654;</div>
       <div class="ctrl-btn" id="btn-next">&#9654;&#9654;</div>
     </div>
+    <div id="np-shuffle-repeat">
+      <div class="mode-btn" id="btn-shuffle" title="shuffle">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M1 4h3l8 8h2M14 4h-3L9.5 5.5M6.5 10.5L5 12H1M14 12v-3M14 4v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="mode-btn" id="btn-repeat" title="repeat">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 4h9a1 1 0 011 1v2M13 12H4a1 1 0 01-1-1V9M1 6l2-2 2 2M15 10l-2 2-2-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <text id="repeat-badge" x="8" y="10" text-anchor="middle" font-size="6" fill="currentColor" font-weight="bold" font-family="sans-serif"></text>
+        </svg>
+      </div>
+    </div>
     <div id="volume-wrap">
       🔊<input type="range" id="volume" min="0" max="1" step="0.02" value="0.8">
     </div>
@@ -1093,6 +1134,9 @@
 let cfg = { server: '', user: '', pass: '' };
 let queue = [];
 let queueIdx = -1;
+let shuffleOn  = false;
+let repeatMode = 0;  // 0 = off, 1 = repeat all, 2 = repeat one
+let origQueue  = []; // original order for un-shuffling
 const player = document.getElementById('player');
 
 // ─────────────────────────────────────────────
@@ -1392,13 +1436,31 @@ async function loadArtists() {
   }
 }
 
+async function playAllArtistTracks(albums, btn) {
+  if (!albums.length) return;
+  if (btn) { btn.textContent = '…loading'; btn.disabled = true; }
+  try {
+    const allSongs = [];
+    for (const album of albums) {
+      const res  = await api('getAlbum', { id: album.id });
+      const songs = res.album?.song || [];
+      allSongs.push(...songs);
+    }
+    if (allSongs.length) playTracks(allSongs, 0);
+  } catch(e) {
+    console.error('playAllArtistTracks error:', e);
+  } finally {
+    if (btn) { btn.textContent = '▶ play all'; btn.disabled = false; }
+  }
+}
+
 async function openArtist(id, name, backFn) {
   const inner  = document.getElementById('artists-inner');
   const rail   = document.getElementById('letter-rail');
   const goBack = backFn || loadArtists;
   inner.innerHTML = `<div class="back-btn" id="back-artists">&#8592; artists</div><div class="state-msg"><div class="spinner"></div></div>`;
   rail.innerHTML  = '';
-  document.getElementById('back-artists').addEventListener('click', goBack);
+  document.getElementById('back-artists').onclick = () => goBack();
   try {
     const res    = await api('getArtist', { id });
     const albums = res.artist?.album || [];
@@ -1406,12 +1468,16 @@ async function openArtist(id, name, backFn) {
       <div class="back-btn" id="back-artists">&#8592; artists</div>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap">
         <div class="album-header-title">${esc(name)}</div>
-        <button class="btn secondary" id="star-artist-btn" style="width:auto;padding:8px 18px;font-size:1rem;flex-shrink:0">☆ favorite</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0">
+          <button class="btn" id="play-artist-btn" style="width:auto;padding:8px 18px;font-size:1rem">▶ play all</button>
+          <button class="btn secondary" id="star-artist-btn" style="width:auto;padding:8px 18px;font-size:1rem">☆ favorite</button>
+        </div>
       </div>
       <div id="lastfm-artist-bio"></div>
       <div class="grid">${albums.map(a => albumCard(a)).join('')}</div>`;
-    document.getElementById('back-artists').addEventListener('click', goBack);
-    document.getElementById('star-artist-btn').addEventListener('click', () => starArtist(id, document.getElementById('star-artist-btn')));
+    document.getElementById('back-artists').onclick = () => goBack();
+    document.getElementById('star-artist-btn').onclick = () => starArtist(id, document.getElementById('star-artist-btn'));
+    document.getElementById('play-artist-btn').onclick = () => playAllArtistTracks(albums, document.getElementById('play-artist-btn'));
     inner.querySelectorAll('.card').forEach(card => {
       card.addEventListener('click', () => openAlbumInArtists(card.dataset.id, card.dataset.name, () => openArtist(id, name, backFn)));
     });
@@ -1422,14 +1488,14 @@ async function openArtist(id, name, backFn) {
     });
   } catch(e) {
     inner.innerHTML = `<div class="back-btn" id="back-artists">&#8592; artists</div><div class="state-msg">Error: ${e.message}</div>`;
-    document.getElementById('back-artists').addEventListener('click', goBack);
+    document.getElementById('back-artists').onclick = () => goBack();
   }
 }
 
 async function openAlbumInArtists(id, name, backFn) {
   const inner = document.getElementById('artists-inner');
   inner.innerHTML = `<div class="back-btn" id="back-pane">&#8592; Back</div><div class="state-msg"><div class="spinner"></div></div>`;
-  document.getElementById('back-pane').addEventListener('click', backFn);
+  document.getElementById('back-pane').onclick = () => backFn();
   try {
     const res   = await api('getAlbum', { id });
     const album = res.album;
@@ -1452,7 +1518,7 @@ async function openAlbumInArtists(id, name, backFn) {
           </div>
         </div>
       </div>`;
-    document.getElementById('back-pane').addEventListener('click', backFn);
+    document.getElementById('back-pane').onclick = () => backFn();
     document.getElementById('play-all-btn').onclick = () => playTracks(songs, 0);
     document.getElementById('queue-all-btn').onclick = () => addAllToQueue(songs);
     document.getElementById('star-album-btn').onclick = () => starAlbum(album.id, document.getElementById('star-album-btn'));
@@ -1464,14 +1530,14 @@ async function openAlbumInArtists(id, name, backFn) {
       if (el && info) el.innerHTML = renderLastfmAlbumInfo(info);
     });
     inner.querySelectorAll('[data-action="play"]').forEach(btn => {
-      btn.addEventListener('click', e => { e.stopPropagation(); playTracks(songs, parseInt(btn.dataset.idx)); });
+      btn.onclick = e => { e.stopPropagation(); playTracks(songs, parseInt(btn.dataset.idx)); };
     });
     inner.querySelectorAll('[data-action="queue"]').forEach(btn => {
-      btn.addEventListener('click', e => { e.stopPropagation(); addToQueue(songs, parseInt(btn.dataset.idx)); });
+      btn.onclick = e => { e.stopPropagation(); addToQueue(songs, parseInt(btn.dataset.idx)); };
     });
   } catch(e) {
     inner.innerHTML = `<div class="back-btn" id="back-pane">&#8592; Back</div><div class="state-msg">Error: ${e.message}</div>`;
-    document.getElementById('back-pane').addEventListener('click', backFn);
+    document.getElementById('back-pane').onclick = () => backFn();
   }
 }
 
@@ -1822,7 +1888,7 @@ async function openAlbum(id, name) {
   const rail  = document.getElementById('album-rail');
   inner.innerHTML = `<div class="back-btn" id="back-albums">&#8592; albums</div><div class="state-msg"><div class="spinner"></div></div>`;
   rail.innerHTML = '';
-  document.getElementById('back-albums').addEventListener('click', loadAlbums);
+  document.getElementById('back-albums').onclick = () => loadAlbums();
   try {
     const res   = await api('getAlbum', { id });
     const album = res.album;
@@ -1845,7 +1911,7 @@ async function openAlbum(id, name) {
           </div>
         </div>
       </div>`;
-    document.getElementById('back-albums').addEventListener('click', loadAlbums);
+    document.getElementById('back-albums').onclick = () => loadAlbums();
     document.getElementById('play-all-btn').onclick = () => playTracks(songs, 0);
     document.getElementById('queue-all-btn').onclick = () => addAllToQueue(songs);
     document.getElementById('star-album-btn').onclick = () => starAlbum(album.id, document.getElementById('star-album-btn'));
@@ -1863,21 +1929,21 @@ async function openAlbum(id, name) {
       if (el && info) el.innerHTML = renderLastfmAlbumInfo(info);
     });
     inner.querySelectorAll('[data-action="play"]').forEach(btn => {
-      btn.addEventListener('click', e => { e.stopPropagation(); playTracks(songs, parseInt(btn.dataset.idx)); });
+      btn.onclick = e => { e.stopPropagation(); playTracks(songs, parseInt(btn.dataset.idx)); };
     });
     inner.querySelectorAll('[data-action="queue"]').forEach(btn => {
-      btn.addEventListener('click', e => { e.stopPropagation(); addToQueue(songs, parseInt(btn.dataset.idx)); });
+      btn.onclick = e => { e.stopPropagation(); addToQueue(songs, parseInt(btn.dataset.idx)); };
     });
   } catch(e) {
     inner.innerHTML = `<div class="back-btn" id="back-albums">&#8592; albums</div><div class="state-msg">Error: ${e.message}</div>`;
     rail.innerHTML = '';
-    document.getElementById('back-albums').addEventListener('click', loadAlbums);
+    document.getElementById('back-albums').onclick = () => loadAlbums();
   }
 }
 
 async function openAlbumInPane(pane, id, name, backFn) {
   pane.innerHTML = `<div class="back-btn" id="back-pane">&#8592; Back</div><div class="state-msg"><div class="spinner"></div></div>`;
-  document.getElementById('back-pane').addEventListener('click', backFn);
+  document.getElementById('back-pane').onclick = () => backFn();
   try {
     const res   = await api('getAlbum', { id });
     const album = res.album;
@@ -1900,7 +1966,7 @@ async function openAlbumInPane(pane, id, name, backFn) {
           </div>
         </div>
       </div>`;
-    document.getElementById('back-pane').addEventListener('click', backFn);
+    document.getElementById('back-pane').onclick = () => backFn();
     document.getElementById('play-all-btn').onclick = () => playTracks(songs, 0);
     document.getElementById('queue-all-btn').onclick = () => addAllToQueue(songs);
     document.getElementById('star-album-btn').onclick = () => starAlbum(album.id, document.getElementById('star-album-btn'));
@@ -1918,14 +1984,14 @@ async function openAlbumInPane(pane, id, name, backFn) {
       if (el && info) el.innerHTML = renderLastfmAlbumInfo(info);
     });
     pane.querySelectorAll('[data-action="play"]').forEach(btn => {
-      btn.addEventListener('click', e => { e.stopPropagation(); playTracks(songs, parseInt(btn.dataset.idx)); });
+      btn.onclick = e => { e.stopPropagation(); playTracks(songs, parseInt(btn.dataset.idx)); };
     });
     pane.querySelectorAll('[data-action="queue"]').forEach(btn => {
-      btn.addEventListener('click', e => { e.stopPropagation(); addToQueue(songs, parseInt(btn.dataset.idx)); });
+      btn.onclick = e => { e.stopPropagation(); addToQueue(songs, parseInt(btn.dataset.idx)); };
     });
   } catch(e) {
     pane.innerHTML = `<div class="back-btn" id="back-pane">&#8592; Back</div><div class="state-msg">Error: ${e.message}</div>`;
-    document.getElementById('back-pane').addEventListener('click', backFn);
+    document.getElementById('back-pane').onclick = () => backFn();
   }
 }
 
@@ -1933,8 +1999,22 @@ async function openAlbumInPane(pane, id, name, backFn) {
 //  Playback
 // ─────────────────────────────────────────────
 function playTracks(tracks, startIdx) {
-  queue    = tracks;
-  queueIdx = startIdx;
+  origQueue = [];  // reset shuffle memory on new playlist
+  if (shuffleOn) {
+    // Shuffle immediately, starting track goes first
+    const start   = tracks[startIdx];
+    const rest    = tracks.filter((_, i) => i !== startIdx);
+    for (let i = rest.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [rest[i], rest[j]] = [rest[j], rest[i]];
+    }
+    queue    = [start, ...rest];
+    queueIdx = 0;
+    origQueue = [...tracks]; // save original so we can unshuffle later
+  } else {
+    queue    = tracks;
+    queueIdx = startIdx;
+  }
   playAt(queueIdx);
   renderQueue();
 }
@@ -1969,8 +2049,22 @@ function updateNowPlaying(track) {
 }
 
 player.addEventListener('ended', () => {
-  if (queueIdx < queue.length - 1) playAt(queueIdx + 1);
-  else { document.getElementById('btn-play').innerHTML = '▶'; document.title = 'Spinbox'; }
+  // Repeat one — restart same track
+  if (repeatMode === 2) {
+    player.currentTime = 0;
+    player.play().catch(() => {});
+    return;
+  }
+  const hasNext = queueIdx < queue.length - 1;
+  if (hasNext) {
+    playAt(queueIdx + 1);
+  } else if (repeatMode === 1) {
+    // Repeat all — loop back to start
+    playAt(0);
+  } else {
+    document.getElementById('btn-play').innerHTML = '▶';
+    document.title = 'Spinbox';
+  }
 });
 
 player.addEventListener('timeupdate', () => {
@@ -2007,6 +2101,84 @@ document.getElementById('btn-next').addEventListener('click', () => {
 document.getElementById('volume').addEventListener('input', e => {
   player.volume = parseFloat(e.target.value);
 });
+
+
+// ─────────────────────────────────────────────
+//  Shuffle & Repeat
+// ─────────────────────────────────────────────
+function shuffleCurrentQueue() {
+  if (queue.length <= 1) return;
+  const current = queue[queueIdx];
+  const rest    = queue.filter((_, i) => i !== queueIdx);
+  // Fisher-Yates
+  for (let i = rest.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [rest[i], rest[j]] = [rest[j], rest[i]];
+  }
+  queue    = [current, ...rest];
+  queueIdx = 0;
+  origQueue = []; // clear saved order since user manually shuffled
+  renderQueue();
+  // Flash the button to confirm
+  const btn = document.getElementById('shuffle-queue-btn');
+  if (btn) {
+    btn.style.color = 'var(--accent)';
+    btn.style.borderColor = 'var(--accent)';
+    setTimeout(() => { btn.style.color = ''; btn.style.borderColor = ''; }, 600);
+  }
+}
+
+function toggleShuffle() {
+  shuffleOn = !shuffleOn;
+  const btn = document.getElementById('btn-shuffle');
+  btn.classList.toggle('active', shuffleOn);
+
+  if (shuffleOn) {
+    // Save original order and shuffle queue around current track
+    origQueue = [...queue];
+    const current = queue[queueIdx];
+    const rest = queue.filter((_, i) => i !== queueIdx);
+    // Fisher-Yates shuffle
+    for (let i = rest.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [rest[i], rest[j]] = [rest[j], rest[i]];
+    }
+    queue = [current, ...rest];
+    queueIdx = 0;
+  } else {
+    // Restore original order, find current track in it
+    if (origQueue.length) {
+      const current = queue[queueIdx];
+      queue = [...origQueue];
+      queueIdx = queue.findIndex(t => t.id === current.id);
+      if (queueIdx === -1) queueIdx = 0;
+      origQueue = [];
+    }
+  }
+  renderQueue();
+}
+
+function toggleRepeat() {
+  repeatMode = (repeatMode + 1) % 3;
+  const btn   = document.getElementById('btn-repeat');
+  const badge = document.getElementById('repeat-badge');
+  if (repeatMode === 0) {
+    btn.classList.remove('active');
+    if (badge) badge.textContent = '';
+    btn.title = 'repeat';
+  } else if (repeatMode === 1) {
+    btn.classList.add('active');
+    if (badge) badge.textContent = '';
+    btn.title = 'repeat all';
+  } else {
+    btn.classList.add('active');
+    if (badge) badge.textContent = '1';
+    btn.title = 'repeat one';
+  }
+}
+
+document.getElementById('btn-shuffle').addEventListener('click', toggleShuffle);
+document.getElementById('btn-repeat').addEventListener('click', toggleRepeat);
 
 // ─────────────────────────────────────────────
 //  Queue pane
@@ -2101,9 +2273,11 @@ function renderQueue() {
     btn.addEventListener('click', e => { e.stopPropagation(); removeFromQueue(parseInt(btn.dataset.remove)); });
   });
 
-  // wire clear-all btn
+  // wire clear-all and shuffle buttons
   const clearBtn = document.getElementById('clear-queue-btn');
   if (clearBtn) clearBtn.onclick = clearQueue;
+  const shuffleQBtn = document.getElementById('shuffle-queue-btn');
+  if (shuffleQBtn) shuffleQBtn.onclick = shuffleCurrentQueue;
 }
 
 // ─────────────────────────────────────────────
