@@ -208,11 +208,36 @@
     }
     @media (min-width: 1024px) {
       .pane { padding: 24px 32px; }
-      #artists-inner { padding: 24px 48px 24px 32px; }
+      #albums-inner {
+      flex: 1;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      padding: 16px;
+      padding-right: 48px;
+    }
+    #album-rail {
+      width: 36px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 0;
+      gap: 1px;
+      background: var(--bg);
+      border-left: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    #artists-inner { padding: 24px 48px 24px 32px; }
     }
     @media (min-width: 1440px) {
       .pane { padding: 32px 48px; }
-      #artists-inner { padding: 32px 48px 32px 48px; }
+  #artists-inner { padding: 32px 48px 32px 48px; }
     }
     .pane.active { display: block; }
 
@@ -279,7 +304,9 @@
     /* ── Artists pane with letter index ── */
     #pane-artists { display: none; padding: 0; }
     #pane-artists.active { display: flex; }
-    #artists-inner {
+    #pane-albums { display: none; padding: 0; }
+    #pane-albums.active { display: flex; }
+#artists-inner {
       flex: 1;
       overflow-y: auto;
       overscroll-behavior: contain;
@@ -737,14 +764,18 @@
     .album-layout {
       display: flex;
       gap: 20px;
-      align-items: flex-start;
+      align-items: stretch;
       margin-bottom: 0;
       flex: 1;
       min-height: 0;
+      overflow: hidden;
     }
     .album-art-col {
       flex-shrink: 0;
       width: min(40%, 340px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     @media (min-width: 1024px) {
       .album-art-col { width: min(35%, 400px); }
@@ -766,8 +797,16 @@
       min-width: 0;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+    .album-tracks-col .track-list {
       overflow-y: auto;
-      max-height: 100%;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      flex: 1;
+      min-height: 0;
+      padding-right: 4px;
     }
     .album-header-title {
       font-family: 'Barlow Condensed', sans-serif;
@@ -964,7 +1003,10 @@
 
       <!-- Albums -->
       <div class="pane" id="pane-albums">
-        <div class="state-msg"><div class="spinner"></div></div>
+        <div id="albums-inner">
+          <div class="state-msg"><div class="spinner"></div></div>
+        </div>
+        <div id="album-rail"></div>
       </div>
 
       <!-- Recently Added -->
@@ -1272,7 +1314,7 @@ async function doSearch() {
         document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
         document.querySelector('[data-pane="albums"]').classList.add('active');
         document.getElementById('pane-albums').classList.add('active');
-        openAlbumInPane(document.getElementById('pane-albums'), card.dataset.id, card.dataset.name, loadAlbums);
+        openAlbum(card.dataset.id, card.dataset.name);
       });
     });
 
@@ -1693,17 +1735,74 @@ async function openGenre(genre, pill) {
 //  Albums
 // ─────────────────────────────────────────────
 async function loadAlbums() {
-  const pane = document.getElementById('pane-albums');
+  const inner = document.getElementById('albums-inner');
+  const rail  = document.getElementById('album-rail');
   try {
-    const res    = await api('getAlbumList2', { type: 'alphabeticalByName', size: 100 });
-    const albums = res.albumList2?.album || [];
-    if (!albums.length) { pane.innerHTML = '<div class="state-msg">No albums found.</div>'; return; }
-    pane.innerHTML = `<div class="grid">${albums.map(a => albumCard(a)).join('')}</div>`;
-    pane.querySelectorAll('.card').forEach(card => {
+    // Fetch up to 500 albums in two batches if needed
+    let albums = [];
+    const r1 = await api('getAlbumList2', { type: 'alphabeticalByName', size: 500, offset: 0 });
+    albums = r1.albumList2?.album || [];
+
+    if (!albums.length) { inner.innerHTML = '<div class="state-msg">No albums found.</div>'; rail.innerHTML = ''; return; }
+
+    // Group by first letter
+    const letterMap = {};
+    albums.forEach(a => {
+      const raw    = (a.name || '').trim();
+      // Strip leading "The ", "A ", "An " for sorting
+      const sort   = raw.replace(/^(the|a|an)\s+/i, '');
+      const letter = sort[0]?.toUpperCase();
+      const key    = /[A-Z]/.test(letter) ? letter : '#';
+      if (!letterMap[key]) letterMap[key] = [];
+      letterMap[key].push(a);
+    });
+
+    // Sort keys: A-Z then #
+    const sortedKeys = Object.keys(letterMap).sort((a, b) => {
+      if (a === '#') return 1;
+      if (b === '#') return -1;
+      return a.localeCompare(b);
+    });
+
+    let html = '';
+    sortedKeys.forEach(letter => {
+      html += `<div class="letter-anchor" id="album-letter-${letter}">${letter}</div>`;
+      html += `<div class="grid">${letterMap[letter].map(a => albumCard(a)).join('')}</div>`;
+    });
+    inner.innerHTML = html;
+
+    inner.querySelectorAll('.card').forEach(card => {
       card.addEventListener('click', () => openAlbum(card.dataset.id, card.dataset.name));
     });
+
+    // Build letter rail
+    const allLetters       = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
+    const availableLetters = new Set(sortedKeys);
+    rail.innerHTML = allLetters.map(l => `
+      <div class="letter-btn ${availableLetters.has(l) ? 'has-artists' : ''}" data-letter="${l}">${l}</div>
+    `).join('');
+
+    rail.querySelectorAll('.letter-btn.has-artists').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const anchor = document.getElementById(`album-letter-${btn.dataset.letter}`);
+        if (anchor) {
+          anchor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          rail.querySelectorAll('.letter-btn').forEach(b => b.classList.remove('active-letter'));
+          btn.classList.add('active-letter');
+          setTimeout(() => btn.classList.remove('active-letter'), 600);
+        }
+      });
+    });
+
+    rail.addEventListener('touchmove', e => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const el    = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (el && el.classList.contains('letter-btn') && el.classList.contains('has-artists')) el.click();
+    }, { passive: false });
+
   } catch(e) {
-    pane.innerHTML = `<div class="state-msg">Error: ${e.message}</div>`;
+    inner.innerHTML = `<div class="state-msg">Error: ${e.message}</div>`;
   }
 }
 
@@ -1719,14 +1818,16 @@ function albumCard(a) {
 }
 
 async function openAlbum(id, name) {
-  const pane = document.getElementById('pane-albums');
-  pane.innerHTML = `<div class="back-btn" id="back-albums">&#8592; Albums</div><div class="state-msg"><div class="spinner"></div></div>`;
+  const inner = document.getElementById('albums-inner');
+  const rail  = document.getElementById('album-rail');
+  inner.innerHTML = `<div class="back-btn" id="back-albums">&#8592; albums</div><div class="state-msg"><div class="spinner"></div></div>`;
+  rail.innerHTML = '';
   document.getElementById('back-albums').addEventListener('click', loadAlbums);
   try {
     const res   = await api('getAlbum', { id });
     const album = res.album;
     const songs = album.song || [];
-    pane.innerHTML = `
+    inner.innerHTML = `
       <div class="album-page">
         <div class="back-btn" id="back-albums">&#8592; albums</div>
         <div class="album-layout">
@@ -1761,14 +1862,15 @@ async function openAlbum(id, name) {
       const el = document.getElementById('lastfm-album-info');
       if (el && info) el.innerHTML = renderLastfmAlbumInfo(info);
     });
-    pane.querySelectorAll('[data-action="play"]').forEach(btn => {
+    inner.querySelectorAll('[data-action="play"]').forEach(btn => {
       btn.addEventListener('click', e => { e.stopPropagation(); playTracks(songs, parseInt(btn.dataset.idx)); });
     });
-    pane.querySelectorAll('[data-action="queue"]').forEach(btn => {
+    inner.querySelectorAll('[data-action="queue"]').forEach(btn => {
       btn.addEventListener('click', e => { e.stopPropagation(); addToQueue(songs, parseInt(btn.dataset.idx)); });
     });
   } catch(e) {
-    pane.innerHTML = `<div class="back-btn" id="back-albums">&#8592; Albums</div><div class="state-msg">Error: ${e.message}</div>`;
+    inner.innerHTML = `<div class="back-btn" id="back-albums">&#8592; albums</div><div class="state-msg">Error: ${e.message}</div>`;
+    rail.innerHTML = '';
     document.getElementById('back-albums').addEventListener('click', loadAlbums);
   }
 }
