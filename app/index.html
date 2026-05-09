@@ -652,6 +652,8 @@
     <div id="tabs">
       <div class="tab active" data-pane="artists">Artists</div>
       <div class="tab" data-pane="albums">Albums</div>
+      <div class="tab" data-pane="recent">Recent</div>
+      <div class="tab" data-pane="random">Random</div>
       <div class="tab" data-pane="playlists">Playlists</div>
       <div class="tab" data-pane="queue">Queue</div>
     </div>
@@ -678,6 +680,19 @@
       <!-- Albums -->
       <div class="pane" id="pane-albums">
         <div class="state-msg"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Recently Added -->
+      <div class="pane" id="pane-recent">
+        <div class="state-msg"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Random -->
+      <div class="pane" id="pane-random">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+          <button class="btn" id="random-refresh-btn" style="width:auto;padding:8px 20px;font-size:1rem">&#8635; reshuffle</button>
+        </div>
+        <div id="random-grid" class="state-msg"><div class="spinner"></div></div>
       </div>
 
       <!-- Playlists -->
@@ -778,6 +793,8 @@ function enterMain() {
   document.getElementById('signout-btn').style.display = 'flex';
   loadArtists();
   loadAlbums();
+  loadRecent();
+  loadRandom();
   loadPlaylists();
 }
 
@@ -844,6 +861,11 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
     tab.classList.add('active');
     document.getElementById('pane-' + tab.dataset.pane).classList.add('active');
+    // wire reshuffle btn each time random tab is activated
+    if (tab.dataset.pane === 'random') {
+      const btn = document.getElementById('random-refresh-btn');
+      if (btn) { btn.onclick = loadRandom; }
+    }
   });
 });
 
@@ -1027,6 +1049,45 @@ async function openAlbumInArtists(id, name, backFn) {
   } catch(e) {
     inner.innerHTML = `<div class="back-btn" id="back-pane">&#8592; Back</div><div class="state-msg">Error: ${e.message}</div>`;
     document.getElementById('back-pane').addEventListener('click', backFn);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Recently Added
+// ─────────────────────────────────────────────
+async function loadRecent() {
+  const pane = document.getElementById('pane-recent');
+  try {
+    const res    = await api('getAlbumList2', { type: 'newest', size: 50 });
+    const albums = res.albumList2?.album || [];
+    if (!albums.length) { pane.innerHTML = '<div class="state-msg">no recently added albums.</div>'; return; }
+    pane.innerHTML = `<div class="grid">${albums.map(a => albumCard(a)).join('')}</div>`;
+    pane.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('click', () => openAlbumInPane(pane, card.dataset.id, card.dataset.name, loadRecent));
+    });
+  } catch(e) {
+    pane.innerHTML = `<div class="state-msg">Error: ${e.message}</div>`;
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Random Albums
+// ─────────────────────────────────────────────
+async function loadRandom() {
+  const grid = document.getElementById('random-grid');
+  grid.innerHTML = '<div class="state-msg"><div class="spinner"></div></div>';
+  try {
+    const res    = await api('getAlbumList2', { type: 'random', size: 30 });
+    const albums = res.albumList2?.album || [];
+    if (!albums.length) { grid.innerHTML = '<div class="state-msg">no albums found.</div>'; return; }
+    grid.className = 'grid';
+    grid.innerHTML = albums.map(a => albumCard(a)).join('');
+    const randomPane = document.getElementById('pane-random');
+    grid.querySelectorAll('.card').forEach(card => {
+      card.addEventListener('click', () => openAlbumInPane(randomPane, card.dataset.id, card.dataset.name, loadRandom));
+    });
+  } catch(e) {
+    grid.innerHTML = `<div class="state-msg">Error: ${e.message}</div>`;
   }
 }
 
