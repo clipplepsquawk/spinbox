@@ -440,18 +440,20 @@
       cursor: pointer;
       transition: background .12s;
       -webkit-tap-highlight-color: transparent;
-      min-height: 64px;
+      min-height: 72px;
     }
     .track-row:active, .track-row.playing { background: var(--surface); }
     .track-row.playing .track-name { color: var(--accent); }
-    .track-num { width: 32px; text-align: center; font-size: 1rem; color: var(--muted); flex-shrink: 0; }
+    .track-num { width: 40px; text-align: center; font-size: 1.2rem; color: var(--muted); flex-shrink: 0; }
     .track-name {
       flex: 1;
-      font-size: 1.05rem;
+      font-size: 1.6rem;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      cursor: pointer;
     }
+    .track-name:hover { color: var(--accent); }
     .track-duration { font-size: 0.95rem; color: var(--muted); flex-shrink: 0; }
 
     /* section labels */
@@ -835,7 +837,7 @@
       font-family: 'Barlow Condensed', sans-serif;
       font-weight: 900;
       font-style: italic;
-      font-size: 1.6rem;
+      font-size: 3.2rem;
       letter-spacing: 1px;
       text-transform: lowercase;
       line-height: 1.1;
@@ -2292,7 +2294,7 @@ function trackRow(s, i) {
   const dur = s.duration ? `${Math.floor(s.duration/60)}:${String(s.duration%60).padStart(2,'0')}` : '';
   return `<div class="track-row" data-idx="${i}">
     <div class="track-num">${i + 1}</div>
-    <div class="track-name">${esc(s.title || s.name || '—')}</div>
+    <div class="track-name" data-action="play" data-idx="${i}">${esc(s.title || s.name || '—')}</div>
     <div class="track-actions">
       <button class="track-action-btn track-action-play" data-action="play" data-idx="${i}" title="play">
         <svg width="20" height="20" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -2388,29 +2390,45 @@ if ('serviceWorker' in navigator) {
 // ─────────────────────────────────────────────
 const fsOverlay = document.getElementById('fs-overlay');
 
+function coverUrlFullscreen(id) {
+  // Request at the full screen resolution × devicePixelRatio for maximum sharpness
+  const size = Math.round(Math.min(window.screen.width, window.screen.height) * (window.devicePixelRatio || 1));
+  const clamped = Math.min(Math.max(size, 800), 3000);
+  return `${cfg.server}/rest/getCoverArt?${apiParams({ id, size: clamped })}`;
+}
+
 function openFullscreen() {
-  const title    = document.getElementById('np-title').textContent;
-  const artist   = document.getElementById('np-artist').textContent;
-  const npArtEl  = document.getElementById('np-art');
-  const imgEl    = npArtEl.querySelector('img');
+  const title   = document.getElementById('np-title').textContent;
+  const artist  = document.getElementById('np-artist').textContent;
+  const track   = queue[queueIdx];
 
   document.getElementById('fs-title').textContent  = title;
   document.getElementById('fs-artist').textContent = artist;
 
-  // Build art element
   const artBg = document.getElementById('fs-art-bg');
-  // Remove old art
   const oldImg = document.getElementById('fs-art-img');
   const oldPlaceholder = document.getElementById('fs-art-placeholder');
   if (oldImg) oldImg.remove();
   if (oldPlaceholder) oldPlaceholder.remove();
 
-  if (imgEl && imgEl.src) {
-    artBg.style.backgroundImage = `url(${imgEl.src})`;
+  if (track && track.coverArt) {
+    // Use thumbnail immediately for background blur so it appears instantly
+    const thumbSrc = coverUrl(track.coverArt);
+    artBg.style.backgroundImage = `url(${thumbSrc})`;
+
     const img = document.createElement('img');
-    img.id  = 'fs-art-img';
-    img.src = imgEl.src;
+    img.id = 'fs-art-img';
+    // Start with thumbnail so something shows immediately
+    img.src = thumbSrc;
     fsOverlay.insertBefore(img, document.getElementById('fs-info'));
+
+    // Then swap to full resolution once loaded
+    const hiRes = new Image();
+    hiRes.onload = () => {
+      img.src = hiRes.src;
+      artBg.style.backgroundImage = `url(${hiRes.src})`;
+    };
+    hiRes.src = coverUrlFullscreen(track.coverArt);
   } else {
     artBg.style.backgroundImage = '';
     const ph = document.createElement('div');
@@ -2419,13 +2437,10 @@ function openFullscreen() {
     fsOverlay.insertBefore(ph, document.getElementById('fs-info'));
   }
 
-  // Sync progress
   syncFsProgress();
-  // Sync play/pause state
   document.getElementById('fs-play').innerHTML = player.paused ? '&#9654;' : '&#9646;&#9646;';
 
   fsOverlay.classList.add('active');
-  // prevent body scroll
   document.body.style.overflow = 'hidden';
 }
 
