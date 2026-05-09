@@ -1,12 +1,12 @@
 FROM nginx:alpine
 
-LABEL org.opencontainers.image.description="Touchscreen Jukebox UI for Subsonic/Navidrome"
-LABEL org.opencontainers.image.source="https://github.com/YOUR_GITHUB_USERNAME/jukebox-app"
+LABEL org.opencontainers.image.description="Spinbox - Touchscreen Jukebox for Navidrome/Subsonic"
+LABEL org.opencontainers.image.source="https://github.com/clipplepsquawk/spinbox"
 
-# Copy static app files into nginx web root
 COPY app/ /usr/share/nginx/html/
-
-# Optional: custom nginx config (uncomment if you add nginx.conf)
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 80
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
