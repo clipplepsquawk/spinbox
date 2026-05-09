@@ -517,26 +517,26 @@
 
     #fs-art-img {
       position: relative;
-      width: min(80vw, 80vh, 420px);
-      height: min(80vw, 80vh, 420px);
-      border-radius: 12px;
+      width: min(92vw, 60vh);
+      height: min(92vw, 60vh);
+      border-radius: 14px;
       object-fit: cover;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-      margin-bottom: 28px;
+      box-shadow: 0 24px 70px rgba(0,0,0,0.9);
+      margin-bottom: 24px;
       flex-shrink: 0;
     }
 
     #fs-art-placeholder {
       position: relative;
-      width: min(80vw, 80vh, 420px);
-      height: min(80vw, 80vh, 420px);
-      border-radius: 12px;
+      width: min(92vw, 60vh);
+      height: min(92vw, 60vh);
+      border-radius: 14px;
       background: var(--surface2);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 6rem;
-      margin-bottom: 28px;
+      font-size: 8rem;
+      margin-bottom: 24px;
       flex-shrink: 0;
     }
 
@@ -1327,9 +1327,9 @@ async function openAlbumInArtists(id, name, backFn) {
         </div>
       </div>`;
     document.getElementById('back-pane').addEventListener('click', backFn);
-    document.getElementById('play-all-btn').addEventListener('click', () => playTracks(songs, 0));
-    document.getElementById('queue-all-btn').addEventListener('click', () => addAllToQueue(songs));
-    document.getElementById('star-album-btn').addEventListener('click', () => starAlbum(album.id, document.getElementById('star-album-btn')));
+    document.getElementById('play-all-btn').onclick = () => playTracks(songs, 0);
+    document.getElementById('queue-all-btn').onclick = () => addAllToQueue(songs);
+    document.getElementById('star-album-btn').onclick = () => starAlbum(album.id, document.getElementById('star-album-btn'));
     document.getElementById('artist-link').addEventListener('click', () => {
       if (album.artistId) openArtist(album.artistId, album.artist, loadArtists);
     });
@@ -1661,9 +1661,9 @@ async function openAlbum(id, name) {
         </div>
       </div>`;
     document.getElementById('back-albums').addEventListener('click', loadAlbums);
-    document.getElementById('play-all-btn').addEventListener('click', () => playTracks(songs, 0));
-    document.getElementById('queue-all-btn').addEventListener('click', () => addAllToQueue(songs));
-    document.getElementById('star-album-btn').addEventListener('click', () => starAlbum(album.id, document.getElementById('star-album-btn')));
+    document.getElementById('play-all-btn').onclick = () => playTracks(songs, 0);
+    document.getElementById('queue-all-btn').onclick = () => addAllToQueue(songs);
+    document.getElementById('star-album-btn').onclick = () => starAlbum(album.id, document.getElementById('star-album-btn'));
     document.getElementById('artist-link').addEventListener('click', () => {
       if (album.artistId) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1715,9 +1715,9 @@ async function openAlbumInPane(pane, id, name, backFn) {
         </div>
       </div>`;
     document.getElementById('back-pane').addEventListener('click', backFn);
-    document.getElementById('play-all-btn').addEventListener('click', () => playTracks(songs, 0));
-    document.getElementById('queue-all-btn').addEventListener('click', () => addAllToQueue(songs));
-    document.getElementById('star-album-btn').addEventListener('click', () => starAlbum(album.id, document.getElementById('star-album-btn')));
+    document.getElementById('play-all-btn').onclick = () => playTracks(songs, 0);
+    document.getElementById('queue-all-btn').onclick = () => addAllToQueue(songs);
+    document.getElementById('star-album-btn').onclick = () => starAlbum(album.id, document.getElementById('star-album-btn'));
     document.getElementById('artist-link').addEventListener('click', () => {
       if (album.artistId) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
