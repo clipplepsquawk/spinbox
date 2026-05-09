@@ -654,7 +654,6 @@
       <div class="tab" data-pane="albums">Albums</div>
       <div class="tab" data-pane="recent">Recent</div>
       <div class="tab" data-pane="random">Random</div>
-      <div class="tab" data-pane="playlists">Playlists</div>
       <div class="tab" data-pane="queue">Queue</div>
     </div>
 
@@ -695,13 +694,13 @@
         <div id="random-grid" class="state-msg"><div class="spinner"></div></div>
       </div>
 
-      <!-- Playlists -->
-      <div class="pane" id="pane-playlists">
-        <div class="state-msg"><div class="spinner"></div></div>
-      </div>
 
       <!-- Queue -->
       <div class="pane" id="pane-queue">
+        <div id="queue-header" style="display:none;justify-content:space-between;align-items:center;margin-bottom:14px;flex-shrink:0">
+          <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-style:italic;font-size:1.1rem;letter-spacing:1px;text-transform:lowercase;color:var(--muted)">up next</span>
+          <button id="clear-queue-btn" style="background:none;border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:6px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-style:italic;font-size:0.9rem;letter-spacing:1px;text-transform:lowercase;cursor:pointer">clear all</button>
+        </div>
         <div id="queue-list" class="track-list"></div>
       </div>
     </div>
@@ -795,7 +794,6 @@ function enterMain() {
   loadAlbums();
   loadRecent();
   loadRandom();
-  loadPlaylists();
 }
 
 function signOut() {
@@ -921,8 +919,11 @@ async function doSearch() {
         openAlbumInPane(document.getElementById('pane-albums'), card.dataset.id, card.dataset.name, loadAlbums);
       });
     });
-    out.querySelectorAll('.track-row').forEach(row => {
-      row.addEventListener('click', () => playTracks(songArr, parseInt(row.dataset.idx)));
+    out.querySelectorAll('[data-action="play"]').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); playTracks(songArr, parseInt(btn.dataset.idx)); });
+    });
+    out.querySelectorAll('[data-action="queue"]').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); addToQueue(songArr, parseInt(btn.dataset.idx)); });
     });
   } catch(e) {
     out.innerHTML = `<div class="state-msg">Error: ${e.message}</div>`;
@@ -1029,7 +1030,8 @@ async function openAlbumInArtists(id, name, backFn) {
         <div class="album-layout">
           <div class="album-art-col">
             <div class="album-header-art">${album.coverArt ? `<img src="${coverUrl(album.coverArt)}">` : '💿'}</div>
-            <button class="btn" id="play-all-btn" style="width:100%;padding:10px 0;font-size:1.1rem">▶ play all</button>
+            <button class="btn" id="play-all-btn" style="width:100%;padding:10px 0;font-size:1.1rem;margin-bottom:8px">▶ play all</button>
+            <button class="btn secondary" id="queue-all-btn" style="width:100%;padding:10px 0;font-size:1.1rem">+ queue all</button>
           </div>
           <div class="album-tracks-col">
             <div class="album-header-title">${esc(album.name)}</div>
@@ -1040,11 +1042,15 @@ async function openAlbumInArtists(id, name, backFn) {
       </div>`;
     document.getElementById('back-pane').addEventListener('click', backFn);
     document.getElementById('play-all-btn').addEventListener('click', () => playTracks(songs, 0));
+    document.getElementById('queue-all-btn').addEventListener('click', () => addAllToQueue(songs));
     document.getElementById('artist-link').addEventListener('click', () => {
       if (album.artistId) openArtist(album.artistId, album.artist);
     });
-    inner.querySelectorAll('.track-row').forEach(row => {
-      row.addEventListener('click', () => playTracks(songs, parseInt(row.dataset.idx)));
+    inner.querySelectorAll('[data-action="play"]').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); playTracks(songs, parseInt(btn.dataset.idx)); });
+    });
+    inner.querySelectorAll('[data-action="queue"]').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); addToQueue(songs, parseInt(btn.dataset.idx)); });
     });
   } catch(e) {
     inner.innerHTML = `<div class="back-btn" id="back-pane">&#8592; Back</div><div class="state-msg">Error: ${e.message}</div>`;
@@ -1134,7 +1140,8 @@ async function openAlbum(id, name) {
         <div class="album-layout">
           <div class="album-art-col">
             <div class="album-header-art">${album.coverArt ? `<img src="${coverUrl(album.coverArt)}">` : '💿'}</div>
-            <button class="btn" id="play-all-btn" style="width:100%;padding:10px 0;font-size:1.1rem">▶ play all</button>
+            <button class="btn" id="play-all-btn" style="width:100%;padding:10px 0;font-size:1.1rem;margin-bottom:8px">▶ play all</button>
+            <button class="btn secondary" id="queue-all-btn" style="width:100%;padding:10px 0;font-size:1.1rem">+ queue all</button>
           </div>
           <div class="album-tracks-col">
             <div class="album-header-title">${esc(album.name)}</div>
@@ -1145,6 +1152,7 @@ async function openAlbum(id, name) {
       </div>`;
     document.getElementById('back-albums').addEventListener('click', loadAlbums);
     document.getElementById('play-all-btn').addEventListener('click', () => playTracks(songs, 0));
+    document.getElementById('queue-all-btn').addEventListener('click', () => addAllToQueue(songs));
     document.getElementById('artist-link').addEventListener('click', () => {
       if (album.artistId) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1154,8 +1162,11 @@ async function openAlbum(id, name) {
         openArtist(album.artistId, album.artist);
       }
     });
-    pane.querySelectorAll('.track-row').forEach(row => {
-      row.addEventListener('click', () => playTracks(songs, parseInt(row.dataset.idx)));
+    pane.querySelectorAll('[data-action="play"]').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); playTracks(songs, parseInt(btn.dataset.idx)); });
+    });
+    pane.querySelectorAll('[data-action="queue"]').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); addToQueue(songs, parseInt(btn.dataset.idx)); });
     });
   } catch(e) {
     pane.innerHTML = `<div class="back-btn" id="back-albums">&#8592; Albums</div><div class="state-msg">Error: ${e.message}</div>`;
@@ -1176,7 +1187,8 @@ async function openAlbumInPane(pane, id, name, backFn) {
         <div class="album-layout">
           <div class="album-art-col">
             <div class="album-header-art">${album.coverArt ? `<img src="${coverUrl(album.coverArt)}">` : '💿'}</div>
-            <button class="btn" id="play-all-btn" style="width:100%;padding:10px 0;font-size:1.1rem">▶ play all</button>
+            <button class="btn" id="play-all-btn" style="width:100%;padding:10px 0;font-size:1.1rem;margin-bottom:8px">▶ play all</button>
+            <button class="btn secondary" id="queue-all-btn" style="width:100%;padding:10px 0;font-size:1.1rem">+ queue all</button>
           </div>
           <div class="album-tracks-col">
             <div class="album-header-title">${esc(album.name)}</div>
@@ -1187,6 +1199,7 @@ async function openAlbumInPane(pane, id, name, backFn) {
       </div>`;
     document.getElementById('back-pane').addEventListener('click', backFn);
     document.getElementById('play-all-btn').addEventListener('click', () => playTracks(songs, 0));
+    document.getElementById('queue-all-btn').addEventListener('click', () => addAllToQueue(songs));
     document.getElementById('artist-link').addEventListener('click', () => {
       if (album.artistId) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1196,62 +1209,15 @@ async function openAlbumInPane(pane, id, name, backFn) {
         openArtist(album.artistId, album.artist);
       }
     });
-    pane.querySelectorAll('.track-row').forEach(row => {
-      row.addEventListener('click', () => playTracks(songs, parseInt(row.dataset.idx)));
+    pane.querySelectorAll('[data-action="play"]').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); playTracks(songs, parseInt(btn.dataset.idx)); });
+    });
+    pane.querySelectorAll('[data-action="queue"]').forEach(btn => {
+      btn.addEventListener('click', e => { e.stopPropagation(); addToQueue(songs, parseInt(btn.dataset.idx)); });
     });
   } catch(e) {
     pane.innerHTML = `<div class="back-btn" id="back-pane">&#8592; Back</div><div class="state-msg">Error: ${e.message}</div>`;
     document.getElementById('back-pane').addEventListener('click', backFn);
-  }
-}
-
-// ─────────────────────────────────────────────
-//  Playlists
-// ─────────────────────────────────────────────
-async function loadPlaylists() {
-  const pane = document.getElementById('pane-playlists');
-  try {
-    const res   = await api('getPlaylists');
-    const lists = res.playlists?.playlist || [];
-    if (!lists.length) { pane.innerHTML = '<div class="state-msg">No playlists found.</div>'; return; }
-    pane.innerHTML = `<div class="grid">${lists.map(p => `
-      <div class="card" data-id="${p.id}" data-name="${esc(p.name)}">
-        <div class="card-art">${p.coverArt ? `<img src="${coverUrl(p.coverArt)}" loading="lazy" onerror="this.style.display='none'">` : '🎵'}</div>
-        <div class="card-info">
-          <div class="card-title">${esc(p.name)}</div>
-          <div class="card-sub">${p.songCount || 0} tracks</div>
-        </div>
-      </div>`).join('')}</div>`;
-    pane.querySelectorAll('.card').forEach(card => {
-      card.addEventListener('click', () => openPlaylist(card.dataset.id, card.dataset.name));
-    });
-  } catch(e) {
-    pane.innerHTML = `<div class="state-msg">Error: ${e.message}</div>`;
-  }
-}
-
-async function openPlaylist(id, name) {
-  const pane = document.getElementById('pane-playlists');
-  pane.innerHTML = `<div class="back-btn" id="back-pl">&#8592; Playlists</div><div class="state-msg"><div class="spinner"></div></div>`;
-  document.getElementById('back-pl').addEventListener('click', loadPlaylists);
-  try {
-    const res   = await api('getPlaylist', { id });
-    const songs = res.playlist?.entry || [];
-    pane.innerHTML = `
-      <div class="back-btn" id="back-pl">&#8592; Playlists</div>
-      <div style="margin-bottom:16px">
-        <div class="album-header-title">${esc(name)}</div>
-        <button class="btn" id="play-all-btn" style="margin-top:12px;width:auto;padding:10px 28px;font-size:1.1rem">▶ Play All</button>
-      </div>
-      <div class="track-list">${songs.map((s, i) => trackRow(s, i)).join('')}</div>`;
-    document.getElementById('back-pl').addEventListener('click', loadPlaylists);
-    document.getElementById('play-all-btn').addEventListener('click', () => playTracks(songs, 0));
-    pane.querySelectorAll('.track-row').forEach(row => {
-      row.addEventListener('click', () => playTracks(songs, parseInt(row.dataset.idx)));
-    });
-  } catch(e) {
-    pane.innerHTML = `<div class="back-btn" id="back-pl">&#8592; Playlists</div><div class="state-msg">Error: ${e.message}</div>`;
-    document.getElementById('back-pl').addEventListener('click', loadPlaylists);
   }
 }
 
@@ -1322,20 +1288,99 @@ document.getElementById('volume').addEventListener('input', e => {
 // ─────────────────────────────────────────────
 //  Queue pane
 // ─────────────────────────────────────────────
+function addToQueue(tracks, idx) {
+  const track = tracks[idx];
+  if (!track) return;
+  queue.push(track);
+  // if nothing playing, start immediately
+  if (queueIdx === -1) {
+    queueIdx = queue.length - 1;
+    playAt(queueIdx);
+  }
+  renderQueue();
+  flashQueueTab();
+}
+
+function addAllToQueue(tracks) {
+  if (!tracks.length) return;
+  const wasEmpty = queue.length === 0;
+  queue.push(...tracks);
+  if (wasEmpty || queueIdx === -1) {
+    queueIdx = 0;
+    playAt(queueIdx);
+  }
+  renderQueue();
+  flashQueueTab();
+}
+
+function flashQueueTab() {
+  const tab = document.querySelector('[data-pane="queue"]');
+  if (!tab) return;
+  tab.style.color = 'var(--accent)';
+  setTimeout(() => { tab.style.color = ''; }, 600);
+}
+
+function removeFromQueue(idx) {
+  if (idx < queueIdx) queueIdx--;
+  else if (idx === queueIdx) {
+    queue.splice(idx, 1);
+    if (queue.length === 0) {
+      queueIdx = -1;
+      player.pause();
+      player.src = '';
+      document.getElementById('btn-play').innerHTML = '▶';
+      document.title = 'Spinbox';
+    } else {
+      queueIdx = Math.min(queueIdx, queue.length - 1);
+      playAt(queueIdx);
+    }
+    renderQueue();
+    return;
+  }
+  queue.splice(idx, 1);
+  renderQueue();
+}
+
+function clearQueue() {
+  queue = [];
+  queueIdx = -1;
+  player.pause();
+  player.src = '';
+  document.getElementById('btn-play').innerHTML = '▶';
+  document.getElementById('now-playing').style.display = 'none';
+  document.title = 'Spinbox';
+  renderQueue();
+}
+
 function renderQueue() {
-  const el = document.getElementById('queue-list');
-  if (!queue.length) { el.innerHTML = '<div class="state-msg">Queue is empty.</div>'; return; }
+  const el     = document.getElementById('queue-list');
+  const header = document.getElementById('queue-header');
+  if (!queue.length) {
+    el.innerHTML = '<div class="state-msg">queue is empty.</div>';
+    if (header) header.style.display = 'none';
+    return;
+  }
+  if (header) header.style.display = 'flex';
   el.innerHTML = queue.map((t, i) => `
-    <div class="queue-item ${i === queueIdx ? 'current' : ''}" data-idx="${i}" style="cursor:pointer">
-      <div class="queue-item-num">${i === queueIdx ? '▶' : i + 1}</div>
-      <div style="flex:1;min-width:0">
+    <div class="queue-item ${i === queueIdx ? 'current' : ''}" data-idx="${i}">
+      <div class="queue-item-num" style="cursor:pointer" data-play="${i}">${i === queueIdx ? '▶' : i + 1}</div>
+      <div style="flex:1;min-width:0;cursor:pointer" data-play="${i}">
         <div class="queue-item-name">${esc(t.title || t.name || '—')}</div>
         <div class="queue-item-artist">${esc(t.artist || '')}</div>
       </div>
+      <div class="queue-remove-btn" data-remove="${i}" title="remove">✕</div>
     </div>`).join('');
-  el.querySelectorAll('.queue-item').forEach(row => {
-    row.addEventListener('click', () => playAt(parseInt(row.dataset.idx)));
+
+  el.querySelectorAll('[data-play]').forEach(el => {
+    el.addEventListener('click', () => playAt(parseInt(el.dataset.play)));
   });
+  el.querySelectorAll('[data-remove]').forEach(btn => {
+    btn.addEventListener('click', e => { e.stopPropagation(); removeFromQueue(parseInt(btn.dataset.remove)); });
+  });
+
+  // wire clear-all btn
+  const clearBtn = document.getElementById('clear-queue-btn');
+  if (clearBtn) clearBtn.onclick = clearQueue;
 }
 
 // ─────────────────────────────────────────────
@@ -1346,7 +1391,10 @@ function trackRow(s, i) {
   return `<div class="track-row" data-idx="${i}">
     <div class="track-num">${i + 1}</div>
     <div class="track-name">${esc(s.title || s.name || '—')}</div>
-    <div class="track-duration">${dur}</div>
+    <div class="track-actions">
+      <button class="track-action-btn track-action-play" data-action="play" data-idx="${i}">play</button>
+      <button class="track-action-btn track-action-queue" data-action="queue" data-idx="${i}">+ queue</button>
+    </div>
   </div>`;
 }
 
