@@ -1357,7 +1357,7 @@ async function doSearch() {
 
     // Artist cards → navigate to artist page
     out.querySelectorAll('.artist-result').forEach(card => {
-      card.addEventListener('click', () => {
+      card.onclick = () => {
         searchOverlay.classList.remove('active');
         document.getElementById('search-icon-btn').classList.remove('active');
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1365,12 +1365,12 @@ async function doSearch() {
         document.querySelector('[data-pane="artists"]').classList.add('active');
         document.getElementById('pane-artists').classList.add('active');
         openArtist(card.dataset.id, card.dataset.name, loadArtists);
-      });
+      };
     });
 
     // Album cards → navigate to album page
     out.querySelectorAll('.card:not(.artist-result)').forEach(card => {
-      card.addEventListener('click', () => {
+      card.onclick = () => {
         searchOverlay.classList.remove('active');
         document.getElementById('search-icon-btn').classList.remove('active');
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1422,7 +1422,7 @@ async function loadArtists() {
     });
     inner.innerHTML = html;
     inner.querySelectorAll('.card').forEach(card => {
-      card.addEventListener('click', () => openArtist(card.dataset.id, card.dataset.name));
+      card.onclick = () => openArtist(card.dataset.id, card.dataset.name);
     });
 
     const allLetters      = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
@@ -1455,21 +1455,26 @@ async function loadArtists() {
   }
 }
 
-async function playAllArtistTracks(albums, btn) {
-  if (!albums.length) return;
+async function playAllArtistTracks(frozenAlbums) {
+  if (!frozenAlbums.length) return;
+  const btn = document.getElementById('play-artist-btn');
   if (btn) { btn.textContent = '…loading'; btn.disabled = true; }
   try {
     const allSongs = [];
-    for (const album of albums) {
-      const res  = await api('getAlbum', { id: album.id });
+    for (const album of frozenAlbums) {
+      const res   = await api('getAlbum', { id: album.id });
       const songs = res.album?.song || [];
       allSongs.push(...songs);
     }
-    if (allSongs.length) playTracks(allSongs, 0);
+    if (allSongs.length) {
+      playTracks(allSongs, 0);
+    }
   } catch(e) {
     console.error('playAllArtistTracks error:', e);
   } finally {
-    if (btn) { btn.textContent = '▶ play all'; btn.disabled = false; }
+    // Re-query the button in case DOM was rebuilt during the async fetch
+    const b = document.getElementById('play-artist-btn');
+    if (b) { b.textContent = '▶ play all'; b.disabled = false; }
   }
 }
 
@@ -1496,9 +1501,9 @@ async function openArtist(id, name, backFn) {
       <div class="grid">${albums.map(a => albumCard(a)).join('')}</div>`;
     document.getElementById('back-artists').onclick = () => goBack();
     document.getElementById('star-artist-btn').onclick = () => starArtist(id, document.getElementById('star-artist-btn'));
-    document.getElementById('play-artist-btn').onclick = () => playAllArtistTracks(albums, document.getElementById('play-artist-btn'));
+    document.getElementById('play-artist-btn').onclick = () => playAllArtistTracks(albums.slice());
     inner.querySelectorAll('.card').forEach(card => {
-      card.addEventListener('click', () => openAlbumInArtists(card.dataset.id, card.dataset.name, () => openArtist(id, name, backFn)));
+      card.onclick = () => openAlbumInArtists(card.dataset.id, card.dataset.name, () => openArtist(id, name, backFn));
     });
     // Async Last.fm bio injection
     lastfmArtistBio(name).then(bio => {
@@ -1555,7 +1560,7 @@ async function loadRecent() {
     if (!albums.length) { pane.innerHTML = '<div class="state-msg">no recently added albums.</div>'; return; }
     pane.innerHTML = `<div class="grid">${albums.map(a => albumCard(a)).join('')}</div>`;
     pane.querySelectorAll('.card').forEach(card => {
-      card.addEventListener('click', () => openAlbumInPane(pane, card.dataset.id, card.dataset.name, loadRecent));
+      card.onclick = () => openAlbumInPane(pane, card.dataset.id, card.dataset.name, loadRecent));
     });
   } catch(e) {
     pane.innerHTML = `<div class="state-msg">Error: ${e.message}</div>`;
@@ -1576,7 +1581,7 @@ async function loadRandom() {
     grid.innerHTML = albums.map(a => albumCard(a)).join('');
     const randomPane = document.getElementById('pane-random');
     grid.querySelectorAll('.card').forEach(card => {
-      card.addEventListener('click', () => openAlbumInPane(randomPane, card.dataset.id, card.dataset.name, loadRandom));
+      card.onclick = () => openAlbumInPane(randomPane, card.dataset.id, card.dataset.name, loadRandom));
     });
   } catch(e) {
     grid.innerHTML = `<div class="state-msg">Error: ${e.message}</div>`;
@@ -1707,7 +1712,7 @@ async function loadFavorites() {
 
     // Artist cards → artist page
     pane.querySelectorAll('.fav-artist-card').forEach(card => {
-      card.addEventListener('click', () => {
+      card.onclick = () => {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
         document.querySelector('[data-pane="artists"]').classList.add('active');
@@ -1719,12 +1724,12 @@ async function loadFavorites() {
           document.getElementById('pane-favorites').classList.add('active');
           loadFavorites();
         });
-      });
+      };
     });
 
     // Album cards → album page within favorites pane
     pane.querySelectorAll('.card:not(.fav-artist-card)').forEach(card => {
-      card.addEventListener('click', () => openAlbumInPane(pane, card.dataset.id, card.dataset.name, loadFavorites));
+      card.onclick = () => openAlbumInPane(pane, card.dataset.id, card.dataset.name, loadFavorites));
     });
 
     // Song play/queue buttons
@@ -1763,7 +1768,7 @@ async function loadGenres() {
       </div>`;
 
     pane.querySelectorAll('.genre-pill').forEach(pill => {
-      pill.addEventListener('click', () => openGenre(pill.dataset.genre, pill));
+      pill.onclick = () => openGenre(pill.dataset.genre, pill);
     });
   } catch(e) {
     pane.innerHTML = `<div class="state-msg">Error: ${e.message}</div>`;
@@ -1793,7 +1798,7 @@ async function openGenre(genre, pill) {
       <div class="section-label" style="margin-bottom:12px">${esc(genre)}</div>
       <div class="grid">${albums.map(a => albumCard(a)).join('')}</div>`;
     albumArea.querySelectorAll('.card').forEach(card => {
-      card.addEventListener('click', () => openAlbumInPane(pane, card.dataset.id, card.dataset.name, () => loadGenres()));
+      card.onclick = () => openAlbumInPane(pane, card.dataset.id, card.dataset.name, () => loadGenres()));
     });
   } catch(e) {
     albumArea.innerHTML = `<div class="state-msg">Error: ${e.message}</div>`;
@@ -1841,7 +1846,7 @@ async function loadAlbums() {
     inner.innerHTML = html;
 
     inner.querySelectorAll('.card').forEach(card => {
-      card.addEventListener('click', () => openAlbum(card.dataset.id, card.dataset.name));
+      card.onclick = () => openAlbum(card.dataset.id, card.dataset.name);
     });
 
     // Build letter rail
@@ -2056,10 +2061,14 @@ function updateNowPlaying(track) {
 }
 
 player.addEventListener('ended', () => {
-  // Repeat one — restart same track
+  // Repeat one — reload the same track from scratch
   if (repeatMode === 2) {
-    player.currentTime = 0;
-    player.play().catch(() => {});
+    const track = queue[queueIdx];
+    if (track) {
+      player.src = streamUrl(track.id);
+      player.load();
+      player.play().catch(() => {});
+    }
     return;
   }
   const hasNext = queueIdx < queue.length - 1;
