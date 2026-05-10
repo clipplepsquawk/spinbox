@@ -249,13 +249,13 @@
       background: var(--bg);
       z-index: 100;
       flex-direction: column;
-      padding: 16px;
+      padding: 0;
     }
     #search-overlay.active { display: flex; }
     #search-overlay-bar {
       display: flex;
       gap: 10px;
-      margin-bottom: 16px;
+      margin: 16px 16px 12px;
       flex-shrink: 0;
     }
     #search-overlay-bar input {
@@ -299,6 +299,8 @@
       overflow-y: auto;
       overscroll-behavior: contain;
       -webkit-overflow-scrolling: touch;
+      padding: 0 16px 8px;
+      min-height: 0;
     }
 
     /* ── Artists pane with letter index ── */
@@ -878,6 +880,54 @@
       margin-left: 4px;
     }
 
+    /* Touch keyboard */
+    #touch-keyboard {
+      flex-shrink: 0;
+      padding: 10px 8px 8px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      user-select: none;
+    }
+    .kb-row {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .kb-key {
+      height: 58px;
+      min-width: 44px;
+      flex: 1;
+      max-width: 72px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-style: italic;
+      font-size: 1.3rem;
+      color: var(--text);
+      cursor: pointer;
+      transition: background .1s, transform .08s;
+      -webkit-tap-highlight-color: transparent;
+      letter-spacing: 1px;
+    }
+    .kb-key:active { background: var(--border); transform: scale(0.93); }
+    .kb-key.kb-wide { flex: 1.8; max-width: 120px; font-size: 1rem; }
+    .kb-key.kb-space { flex: 4; max-width: 300px; font-size: 0.9rem; letter-spacing: 2px; }
+    .kb-key.kb-search {
+      flex: 2.5; max-width: 180px;
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+      font-size: 1.1rem;
+    }
+    .kb-key.kb-search:active { opacity: 0.85; transform: scale(0.96); }
+    .kb-key.kb-back { font-size: 1.4rem; }
+
     /* Last.fm bio / info */
     .lastfm-bio {
       font-size: 0.85rem;
@@ -1022,6 +1072,14 @@
           <button id="search-close-btn">✕</button>
         </div>
         <div id="search-overlay-results"></div>
+        <!-- Touch keyboard -->
+        <div id="touch-keyboard">
+          <div class="kb-row" id="kb-row-num"></div>
+          <div class="kb-row" id="kb-row-q"></div>
+          <div class="kb-row" id="kb-row-a"></div>
+          <div class="kb-row" id="kb-row-z"></div>
+          <div class="kb-row" id="kb-row-bot"></div>
+        </div>
       </div>
 
       <!-- Artists -->
@@ -2388,6 +2446,80 @@ function md5(str) {
   return hex;
 }
 </script>
+
+// ─────────────────────────────────────────────
+//  Touch Keyboard
+// ─────────────────────────────────────────────
+(function buildKeyboard() {
+  const rows = {
+    'kb-row-num': ['1','2','3','4','5','6','7','8','9','0'],
+    'kb-row-q':   ['q','w','e','r','t','y','u','i','o','p'],
+    'kb-row-a':   ['a','s','d','f','g','h','j','k','l'],
+    'kb-row-z':   ['z','x','c','v','b','n','m'],
+    'kb-row-bot': null  // special row
+  };
+
+  Object.entries(rows).forEach(([rowId, keys]) => {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+
+    if (keys) {
+      keys.forEach(k => {
+        const btn = document.createElement('div');
+        btn.className = 'kb-key';
+        btn.textContent = k;
+        btn.addEventListener('pointerdown', e => {
+          e.preventDefault();
+          const inp = document.getElementById('search-input');
+          inp.value += k;
+        });
+        row.appendChild(btn);
+      });
+    } else {
+      // Bottom row: backspace, space, clear, search
+      const backBtn = document.createElement('div');
+      backBtn.className = 'kb-key kb-wide kb-back';
+      backBtn.innerHTML = '&#9003;';
+      backBtn.title = 'backspace';
+      backBtn.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        const inp = document.getElementById('search-input');
+        inp.value = inp.value.slice(0, -1);
+      });
+      // Hold backspace to clear
+      let holdTimer;
+      backBtn.addEventListener('pointerdown', () => {
+        holdTimer = setTimeout(() => {
+          document.getElementById('search-input').value = '';
+        }, 700);
+      });
+      backBtn.addEventListener('pointerup', () => clearTimeout(holdTimer));
+      backBtn.addEventListener('pointerleave', () => clearTimeout(holdTimer));
+
+      const spaceBtn = document.createElement('div');
+      spaceBtn.className = 'kb-key kb-space';
+      spaceBtn.textContent = 'space';
+      spaceBtn.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        const inp = document.getElementById('search-input');
+        inp.value += ' ';
+      });
+
+      const searchBtn = document.createElement('div');
+      searchBtn.className = 'kb-key kb-search';
+      searchBtn.textContent = '⌕ search';
+      searchBtn.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        doSearch();
+      });
+
+      row.appendChild(backBtn);
+      row.appendChild(spaceBtn);
+      row.appendChild(searchBtn);
+    }
+  });
+})();
+
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
