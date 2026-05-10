@@ -579,117 +579,145 @@
       inset: 0;
       z-index: 999;
       background: #000;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
       -webkit-tap-highlight-color: transparent;
     }
     #fs-overlay.active { display: flex; }
 
+    /* Blurred background - subtle, not dominant */
     #fs-art-bg {
       position: absolute;
-      inset: 0;
+      inset: -40px;
       background-size: cover;
       background-position: center;
-      filter: blur(40px) brightness(0.35) saturate(1.4);
-      transform: scale(1.1);
+      filter: blur(60px) brightness(0.25) saturate(0.8);
     }
 
-    #fs-art-img {
-      position: relative;
-      width: min(92vw, 60vh);
-      height: min(92vw, 60vh);
-      border-radius: 14px;
-      object-fit: cover;
-      box-shadow: 0 24px 70px rgba(0,0,0,0.9);
-      margin-bottom: 24px;
-      flex-shrink: 0;
-    }
-
-    #fs-art-placeholder {
-      position: relative;
-      width: min(92vw, 60vh);
-      height: min(92vw, 60vh);
-      border-radius: 14px;
-      background: var(--surface2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 8rem;
-      margin-bottom: 24px;
-      flex-shrink: 0;
-    }
-
+    /* Close button */
     #fs-close {
       position: absolute;
       top: 20px;
       right: 20px;
-      width: 44px;
-      height: 44px;
+      width: 56px;
+      height: 56px;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: rgba(255,255,255,0.7);
-      font-size: 1.3rem;
+      color: rgba(255,255,255,0.8);
+      font-size: 1.5rem;
       cursor: pointer;
       border-radius: 50%;
-      background: rgba(255,255,255,0.1);
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.15);
       transition: background .15s;
-      z-index: 1000;
+      z-index: 1001;
       -webkit-tap-highlight-color: transparent;
     }
-    #fs-close:active { background: rgba(255,255,255,0.25); }
+    #fs-close:active { background: rgba(255,255,255,0.2); }
+
+    /* Portrait layout: art top, controls bottom */
+    #fs-portrait {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      height: 100%;
+      padding: 80px 24px 32px;
+    }
+
+    /* The art itself - as big as possible */
+    #fs-art-img {
+      position: relative;
+      width: min(88vw, 68vh);
+      height: min(88vw, 68vh);
+      border-radius: 16px;
+      object-fit: cover;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.95), 0 0 0 1px rgba(255,255,255,0.06);
+      flex-shrink: 0;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+
+    #fs-art-placeholder {
+      position: relative;
+      width: min(88vw, 68vh);
+      height: min(88vw, 68vh);
+      border-radius: 16px;
+      background: #1a1a1a;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10rem;
+      flex-shrink: 0;
+    }
+
+    /* Info + controls section */
+    #fs-bottom {
+      position: relative;
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
 
     #fs-info {
-      position: relative;
+      width: 100%;
       text-align: center;
-      margin-bottom: 24px;
-      padding: 0 24px;
-      max-width: 500px;
+      margin-bottom: 16px;
+      padding: 0 8px;
     }
     #fs-title {
       font-family: 'Barlow Condensed', sans-serif;
       font-weight: 900;
       font-style: italic;
-      font-size: 1.8rem;
+      font-size: 2.2rem;
       letter-spacing: 1px;
       text-transform: lowercase;
       color: #fff;
-      line-height: 1.1;
-      margin-bottom: 6px;
+      line-height: 1.05;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     #fs-artist {
-      font-size: 0.9rem;
-      color: rgba(255,255,255,0.6);
+      font-size: 1.1rem;
+      color: rgba(255,255,255,0.55);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     #fs-time-wrap {
       position: relative;
       display: flex;
       justify-content: space-between;
-      width: min(80vw, 420px);
+      width: 100%;
       margin-bottom: 6px;
+      padding: 0 2px;
     }
     #fs-time-current, #fs-time-total {
-      font-size: 0.8rem;
-      color: rgba(255,255,255,0.5);
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.45);
       font-variant-numeric: tabular-nums;
-      letter-spacing: 0.5px;
     }
 
     #fs-progress-wrap {
       position: relative;
-      width: min(80vw, 420px);
-      height: 3px;
-      background: rgba(255,255,255,0.2);
-      border-radius: 2px;
+      width: 100%;
+      height: 5px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 3px;
       cursor: pointer;
       margin-bottom: 28px;
     }
     #fs-progress-bar {
       height: 100%;
       background: #fff;
-      border-radius: 2px;
+      border-radius: 3px;
       width: 0%;
       transition: width .5s linear;
     }
@@ -698,30 +726,57 @@
       position: relative;
       display: flex;
       align-items: center;
-      gap: 16px;
+      justify-content: center;
+      gap: 20px;
+      width: 100%;
     }
     .fs-btn {
-      width: 76px;
-      height: 76px;
+      width: 80px;
+      height: 80px;
       display: flex;
       align-items: center;
       justify-content: center;
       border-radius: 50%;
       cursor: pointer;
-      color: rgba(255,255,255,0.8);
-      font-size: 1.5rem;
+      color: rgba(255,255,255,0.85);
+      font-size: 1.6rem;
       transition: background .12s, transform .1s;
       -webkit-tap-highlight-color: transparent;
     }
-    .fs-btn:active { background: rgba(255,255,255,0.15); transform: scale(0.93); }
+    .fs-btn:active { background: rgba(255,255,255,0.12); transform: scale(0.92); }
     .fs-play-btn {
-      width: 92px;
-      height: 92px;
+      width: 100px;
+      height: 100px;
       background: #fff;
       color: #000;
-      font-size: 1.9rem;
+      font-size: 2.2rem;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     }
-    .fs-play-btn:active { opacity: 0.85; background: #fff; }
+    .fs-play-btn:active { opacity: 0.88; transform: scale(0.95); }
+
+    /* Widescreen: art left, controls right */
+    @media (orientation: landscape) and (min-width: 700px) {
+      #fs-portrait {
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        gap: 48px;
+        padding: 32px 48px;
+      }
+      #fs-art-img, #fs-art-placeholder {
+        width: min(52vh, 52vw);
+        height: min(52vh, 52vw);
+        flex-shrink: 0;
+      }
+      #fs-bottom {
+        flex: 1;
+        max-width: 440px;
+        align-items: flex-start;
+      }
+      #fs-info { text-align: left; }
+      #fs-title { font-size: 2.8rem; white-space: normal; }
+      #fs-controls { justify-content: flex-start; }
+    }
 
     /* loading / empty states */
     .state-msg {
@@ -1145,19 +1200,24 @@
   <div id="fs-overlay">
     <div id="fs-art-bg"></div>
     <div id="fs-close">✕</div>
-    <div id="fs-info">
-      <div id="fs-title">—</div>
-      <div id="fs-artist">—</div>
-    </div>
-    <div id="fs-time-wrap">
-      <span id="fs-time-current">0:00</span>
-      <span id="fs-time-total">0:00</span>
-    </div>
-    <div id="fs-progress-wrap"><div id="fs-progress-bar"></div></div>
-    <div id="fs-controls">
-      <div class="fs-btn" id="fs-prev">&#9664;&#9664;</div>
-      <div class="fs-btn fs-play-btn" id="fs-play">&#9654;</div>
-      <div class="fs-btn" id="fs-next">&#9654;&#9654;</div>
+    <div id="fs-portrait">
+      <!-- art injected here by JS -->
+      <div id="fs-bottom">
+        <div id="fs-info">
+          <div id="fs-title">—</div>
+          <div id="fs-artist">—</div>
+        </div>
+        <div id="fs-time-wrap">
+          <span id="fs-time-current">0:00</span>
+          <span id="fs-time-total">0:00</span>
+        </div>
+        <div id="fs-progress-wrap"><div id="fs-progress-bar"></div></div>
+        <div id="fs-controls">
+          <div class="fs-btn" id="fs-prev">&#9664;&#9664;</div>
+          <div class="fs-btn fs-play-btn" id="fs-play">&#9654;</div>
+          <div class="fs-btn" id="fs-next">&#9654;&#9654;</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1558,7 +1618,11 @@ async function openArtist(id, name, backFn) {
       <div id="lastfm-artist-bio"></div>
       <div class="grid">${albums.map(a => albumCard(a)).join('')}</div>`;
     document.getElementById('back-artists').onclick = () => goBack();
-    document.getElementById('star-artist-btn').onclick = () => starArtist(id, document.getElementById('star-artist-btn'));
+    const starArtistBtn = document.getElementById('star-artist-btn');
+    applyStarredStyle(starArtistBtn, !!res.artist?.starred);
+    // fix label for artist context
+    if (!res.artist?.starred) starArtistBtn.textContent = '☆ favorite';
+    starArtistBtn.onclick = () => starArtist(id, starArtistBtn);
     document.getElementById('play-artist-btn').onclick = () => playAllArtistTracks(albums.slice());
     inner.querySelectorAll('.card').forEach(card => {
       card.onclick = () => openAlbumInArtists(card.dataset.id, card.dataset.name, () => openArtist(id, name, backFn));
@@ -1705,25 +1769,35 @@ function renderLastfmAlbumInfo(info) {
 // ─────────────────────────────────────────────
 //  Star / Favorites
 // ─────────────────────────────────────────────
-async function starAlbum(id, btn) {
-  try {
-    await api('star', { albumId: id });
+function applyStarredStyle(btn, isStarred) {
+  if (isStarred) {
     btn.textContent = '★ favorited';
     btn.style.color = 'var(--accent)';
     btn.style.borderColor = 'var(--accent)';
-    btn.disabled = true;
+    btn.dataset.starred = '1';
+  } else {
+    btn.textContent = '☆ add to favorites';
+    btn.style.color = '';
+    btn.style.borderColor = '';
+    btn.dataset.starred = '0';
+  }
+}
+
+async function starAlbum(id, btn) {
+  const isStarred = btn.dataset.starred === '1';
+  try {
+    await api(isStarred ? 'unstar' : 'star', { albumId: id });
+    applyStarredStyle(btn, !isStarred);
   } catch(e) {
     btn.textContent = '✕ failed';
   }
 }
 
 async function starArtist(id, btn) {
+  const isStarred = btn.dataset.starred === '1';
   try {
-    await api('star', { artistId: id });
-    btn.textContent = '★ favorited';
-    btn.style.color = 'var(--accent)';
-    btn.style.borderColor = 'var(--accent)';
-    btn.disabled = true;
+    await api(isStarred ? 'unstar' : 'star', { artistId: id });
+    applyStarredStyle(btn, !isStarred);
   } catch(e) {
     btn.textContent = '✕ failed';
   }
@@ -1961,7 +2035,10 @@ function wireAlbumButtons(container, album, songs, backEl, backFn) {
 
   if (playBtn)  playBtn.onclick  = () => { playTracks(frozenSongs, 0); };
   if (queueBtn) queueBtn.onclick = () => { addAllToQueue(frozenSongs); };
-  if (starBtn)  starBtn.onclick  = () => starAlbum(album.id, starBtn);
+  if (starBtn) {
+    applyStarredStyle(starBtn, !!album.starred);
+    starBtn.onclick = () => starAlbum(album.id, starBtn);
+  }
   if (artLink)  artLink.onclick  = () => {
     if (album.artistId) {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -2561,7 +2638,8 @@ function openFullscreen() {
     img.id = 'fs-art-img';
     // Start with thumbnail so something shows immediately
     img.src = thumbSrc;
-    fsOverlay.insertBefore(img, document.getElementById('fs-info'));
+    const fsPortrait = document.getElementById('fs-portrait');
+    fsPortrait.insertBefore(img, document.getElementById('fs-bottom'));
 
     // Then swap to full resolution once loaded
     const hiRes = new Image();
@@ -2575,7 +2653,8 @@ function openFullscreen() {
     const ph = document.createElement('div');
     ph.id = 'fs-art-placeholder';
     ph.textContent = '♪';
-    fsOverlay.insertBefore(ph, document.getElementById('fs-info'));
+    const fsPortrait2 = document.getElementById('fs-portrait');
+    fsPortrait2.insertBefore(ph, document.getElementById('fs-bottom'));
   }
 
   syncFsProgress();
